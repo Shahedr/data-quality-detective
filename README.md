@@ -59,7 +59,7 @@ See [examples/messy_orders_report.md](examples/messy_orders_report.md) for a sam
 
 ~~~bash
 dqdetect path/to/file.csv
-dqdetect workbook.xlsx --sheet Orders
+dqdetect workbook.xlsx --sheet Orders\ndqdetect workbook.xlsx --sheet 0
 dqdetect data.csv --format html
 dqdetect data.csv --output audit_reports
 ~~~
@@ -67,7 +67,7 @@ dqdetect data.csv --output audit_reports
 Supported formats:
 
 - CSV
-- Excel (.xlsx and .xls where the installed pandas engine supports it)
+- Excel (.xlsx)
 
 ## Why these checks?
 
