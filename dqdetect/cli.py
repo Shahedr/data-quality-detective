@@ -6,11 +6,10 @@ from dqdetect.profiler import profile_dataframe
 from dqdetect.report import write_reports
 
 
-def _label(count, singular, plural=None):
-    if count == 1:
-        return singular
-
-    return plural or f"{singular}s"
+def _issue_line(count, singular_subject, plural_subject, issue):
+    subject = singular_subject if count == 1 else plural_subject
+    verb = "contains" if count == 1 else "contain"
+    return f"- {count} {subject} {verb} {issue}"
 
 
 def build_parser():
@@ -57,11 +56,6 @@ def main(argv=None):
         report_format=args.format,
     )
 
-    missing = summary["columns_with_missing"]
-    mixed = summary["mixed_numeric_text_columns"]
-    invalid_dates = summary["date_columns_with_invalid_values"]
-    outliers = summary["numeric_columns_with_outliers"]
-
     print("Data Quality Detective")
     print(f"File: {source}")
     print()
@@ -71,33 +65,37 @@ def main(argv=None):
     print()
     print("Issues found")
     print(
-        f"- {missing} {_label(missing, 'column')} contain"
-        if missing != 1
-        else f"- {missing} column contains"
+        _issue_line(
+            summary["columns_with_missing"],
+            "column",
+            "columns",
+            "missing values",
+        )
     )
     print(
-        f"  missing values"
-        if missing
-        else "  missing values"
+        _issue_line(
+            summary["mixed_numeric_text_columns"],
+            "column",
+            "columns",
+            "mixed numeric/text values",
+        )
     )
     print(
-        f"- {mixed} {_label(mixed, 'column')} contain"
-        if mixed != 1
-        else f"- {mixed} column contains"
+        _issue_line(
+            summary["date_columns_with_invalid_values"],
+            "date-like column",
+            "date-like columns",
+            "invalid values",
+        )
     )
-    print("  mixed numeric/text values")
     print(
-        f"- {invalid_dates} {_label(invalid_dates, 'date-like column')} contain"
-        if invalid_dates != 1
-        else f"- {invalid_dates} date-like column contains"
+        _issue_line(
+            summary["numeric_columns_with_outliers"],
+            "numeric column",
+            "numeric columns",
+            "potential IQR outliers",
+        )
     )
-    print("  invalid values")
-    print(
-        f"- {outliers} {_label(outliers, 'numeric column')} contain"
-        if outliers != 1
-        else f"- {outliers} numeric column contains"
-    )
-    print("  potential IQR outliers")
     print()
     print("Reports written to:")
     for path in written:
