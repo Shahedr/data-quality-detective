@@ -54,7 +54,7 @@ Reports written to:
   reports/messy_orders_report.html
 ~~~
 
-See [examples/messy_orders_report.md](examples/messy_orders_report.md) for a sample report.
+See [examples/messy_orders_report.md](examples/messy_orders_report.md) for the readable sample report or [examples/messy_orders_report.json](examples/messy_orders_report.json) for the machine-readable version.
 
 ## CLI
 
@@ -102,7 +102,8 @@ data-quality-detective/
 │   └── report.py
 ├── examples/
 │   ├── messy_orders.csv
-│   └── messy_orders_report.md
+│   ├── messy_orders_report.md
+│   └── messy_orders_report.json
 ├── tests/
 ├── .github/workflows/tests.yml
 ├── CONTRIBUTING.md
