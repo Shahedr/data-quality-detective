@@ -1,6 +1,6 @@
 # Data Quality Detective
 
-[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
+[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) [![PyPI](https://img.shields.io/pypi/v/dqdetect.svg)](https://pypi.org/project/dqdetect/) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
 
 A small command-line tool for quickly profiling CSV and Excel files before analysis.
 
@@ -12,21 +12,19 @@ I built this around a problem I keep running into in analytics work: a dataset c
 
 ## Quick start
 
+Install the latest public release from PyPI:
+
 ~~~bash
-git clone https://github.com/Shahedr/data-quality-detective.git
-cd data-quality-detective
-
-python -m venv .venv
-# macOS/Linux
-source .venv/bin/activate
-# Windows
-# .venv/Scripts/activate
-
-pip install -e .
-dqdetect examples/messy_orders.csv
+pip install dqdetect
 ~~~
 
-By default the command writes Markdown and HTML reports to the **reports/** folder. JSON output is available when you want to feed the profile into another script, CI job, or data workflow.
+Then profile a CSV or Excel file:
+
+~~~bash
+dqdetect path/to/file.csv
+~~~
+
+The current PyPI release, **v0.1.0**, writes Markdown and HTML reports to the **reports/** folder by default.
 
 ## What it checks
 
@@ -37,7 +35,6 @@ By default the command writes Markdown and HTML reports to the **reports/** fold
 - mixed numeric/text values
 - invalid values in date-like columns
 - IQR-based outlier counts for numeric columns
-- machine-readable JSON output for automation
 
 The tool does **not** automatically delete or "fix" anything. The report is meant to help an analyst decide what deserves review.
 
@@ -66,30 +63,31 @@ See [examples/messy_orders_report.md](examples/messy_orders_report.md) for the r
 
 ## CLI
 
+Available in the current PyPI release:
+
 ~~~bash
 dqdetect path/to/file.csv
 dqdetect workbook.xlsx --sheet Orders
 dqdetect workbook.xlsx --sheet 0
 dqdetect data.csv --format html
-dqdetect data.csv --format json
-dqdetect data.csv --format all
 dqdetect data.csv --output audit_reports
 ~~~
 
-Supported formats:
+Supported input formats:
 
 - CSV
 - Excel (.xlsx)
 
-## JSON output
+## Development version
 
-Use JSON when the report needs to be consumed by another tool rather than read by a person.
+The `main` branch includes machine-readable JSON output that is planned for the next release:
 
 ~~~bash
 dqdetect data.csv --format json
+dqdetect data.csv --format all
 ~~~
 
-The JSON file includes the dataset summary, per-column profile, issue flags, and recommendations. Use `--format all` when you want Markdown, HTML, and JSON from the same run.
+JSON output includes the dataset summary, per-column profile, issue flags, and recommendations.
 
 ## Scope
 
@@ -127,7 +125,11 @@ data-quality-detective/
 
 ## Development
 
+To work with the latest code from `main`:
+
 ~~~bash
+git clone https://github.com/Shahedr/data-quality-detective.git
+cd data-quality-detective
 pip install -e ".[dev]"
 pytest
 ~~~
