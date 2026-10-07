@@ -3,7 +3,17 @@ from pathlib import Path
 import pandas as pd
 
 
-SUPPORTED_SUFFIXES = {".csv", ".xlsx", ".xls"}
+SUPPORTED_SUFFIXES = {".csv", ".xlsx"}
+
+
+def _normalize_sheet(sheet):
+    if sheet is None:
+        return 0
+
+    if isinstance(sheet, str) and sheet.isdigit():
+        return int(sheet)
+
+    return sheet
 
 
 def load_data(path, sheet=None):
@@ -22,4 +32,4 @@ def load_data(path, sheet=None):
     if suffix == ".csv":
         return pd.read_csv(source)
 
-    return pd.read_excel(source, sheet_name=sheet if sheet is not None else 0)
+    return pd.read_excel(source, sheet_name=_normalize_sheet(sheet))
