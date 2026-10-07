@@ -59,7 +59,8 @@ See [examples/messy_orders_report.md](examples/messy_orders_report.md) for a sam
 
 ~~~bash
 dqdetect path/to/file.csv
-dqdetect workbook.xlsx --sheet Orders\ndqdetect workbook.xlsx --sheet 0
+dqdetect workbook.xlsx --sheet Orders
+dqdetect workbook.xlsx --sheet 0
 dqdetect data.csv --format html
 dqdetect data.csv --output audit_reports
 ~~~
