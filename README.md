@@ -24,7 +24,7 @@ pip install -e .
 dqdetect examples/messy_orders.csv
 ~~~
 
-By default the command writes both Markdown and HTML reports to the **reports/** folder.
+By default the command writes Markdown and HTML reports to the **reports/** folder. JSON output is available when you want to feed the profile into another script, CI job, or data workflow.
 
 ## What it checks
 
@@ -35,6 +35,7 @@ By default the command writes both Markdown and HTML reports to the **reports/**
 - mixed numeric/text values
 - invalid values in date-like columns
 - IQR-based outlier counts for numeric columns
+- machine-readable JSON output for automation
 
 The tool does **not** automatically delete or "fix" anything. The report is meant to help an analyst decide what deserves review.
 
@@ -62,6 +63,8 @@ dqdetect path/to/file.csv
 dqdetect workbook.xlsx --sheet Orders
 dqdetect workbook.xlsx --sheet 0
 dqdetect data.csv --format html
+dqdetect data.csv --format json
+dqdetect data.csv --format all
 dqdetect data.csv --output audit_reports
 ~~~
 
@@ -69,6 +72,16 @@ Supported formats:
 
 - CSV
 - Excel (.xlsx)
+
+## JSON output
+
+Use JSON when the report needs to be consumed by another tool rather than read by a person.
+
+~~~bash
+dqdetect data.csv --format json
+~~~
+
+The JSON file includes the dataset summary, per-column profile, issue flags, and recommendations. Use `--format all` when you want Markdown, HTML, and JSON from the same run.
 
 ## Why these checks?
 
@@ -109,7 +122,6 @@ pytest
 Things I would like to add next:
 
 - user-configurable thresholds
-- JSON output for automation
 - schema rules for expected columns and types
 - PostgreSQL table profiling
 - comparison between two versions of a dataset
