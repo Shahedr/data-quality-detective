@@ -57,8 +57,8 @@ def iqr_outlier_count(series):
     if len(values) < 4:
         return 0
 
-    q1 = values.quantile(0.25)
-    q3 = values.quantile(0.75)
+    q1 = values.quantile(0.25, interpolation="linear")
+    q3 = values.quantile(0.75, interpolation="linear")
     iqr = q3 - q1
 
     if pd.isna(iqr) or iqr == 0:
