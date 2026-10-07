@@ -74,7 +74,7 @@ def render_markdown(profile):
         lines.append(
             "| {column} | {dtype} | {missing_count} ({missing_pct:.2f}%) | "
             "{unique_count} | {mixed_numeric_text_count} | {invalid_date_count} | "
-            "{outlier_count} | {issues} |".format(**item, issues=issues)
+            "{outlier_count} | {issues_text} |".format(**item, issues_text=issues)
         )
 
     lines.extend(["", "## Recommendations", ""])
