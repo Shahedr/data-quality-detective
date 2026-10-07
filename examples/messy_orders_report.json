@@ -1,0 +1,127 @@
+{
+  "generated_at": "2026-10-07T03:30:00+00:00",
+  "summary": {
+    "source": "messy_orders.csv",
+    "rows": 12,
+    "columns": 8,
+    "duplicate_rows": 1,
+    "columns_with_missing": 2,
+    "constant_columns": 0,
+    "mixed_numeric_text_columns": 1,
+    "date_columns_with_invalid_values": 1,
+    "numeric_columns_with_outliers": 2
+  },
+  "columns": [
+    {
+      "column": "order_id",
+      "dtype": "int64",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 11,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 0,
+      "sample_values": ["1", "2", "3"],
+      "issues": []
+    },
+    {
+      "column": "order_date",
+      "dtype": "object",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 11,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 1,
+      "outlier_count": 0,
+      "sample_values": ["2025-01-03", "2025-01-04", "2025-01-05"],
+      "issues": ["invalid date values"]
+    },
+    {
+      "column": "customer_id",
+      "dtype": "object",
+      "missing_count": 1,
+      "missing_pct": 8.33,
+      "unique_count": 10,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 0,
+      "sample_values": ["C001", "C002", "C003"],
+      "issues": ["missing values"]
+    },
+    {
+      "column": "region",
+      "dtype": "object",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 4,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 0,
+      "sample_values": ["Midwest", "South", "West"],
+      "issues": []
+    },
+    {
+      "column": "quantity",
+      "dtype": "int64",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 4,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 1,
+      "sample_values": ["1", "2", "3"],
+      "issues": ["potential outliers"]
+    },
+    {
+      "column": "unit_price",
+      "dtype": "float64",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 10,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 3,
+      "sample_values": ["39.99", "24.5", "19.0"],
+      "issues": ["potential outliers"]
+    },
+    {
+      "column": "freight_cost",
+      "dtype": "object",
+      "missing_count": 1,
+      "missing_pct": 8.33,
+      "unique_count": 9,
+      "constant": false,
+      "mixed_numeric_text_count": 1,
+      "invalid_date_count": 0,
+      "outlier_count": 0,
+      "sample_values": ["12.50", "Included", "8.75"],
+      "issues": ["missing values", "mixed numeric/text"]
+    },
+    {
+      "column": "status",
+      "dtype": "object",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "unique_count": 3,
+      "constant": false,
+      "mixed_numeric_text_count": 0,
+      "invalid_date_count": 0,
+      "outlier_count": 0,
+      "sample_values": ["Shipped", "Delivered", "Returned"],
+      "issues": []
+    }
+  ],
+  "recommendations": [
+    "Review duplicate rows before aggregating or counting records.",
+    "Review missing values by column before deciding whether to impute, exclude, or preserve them.",
+    "Keep mixed numeric/text source values separate from any cleaned numeric field instead of coercing text to zero.",
+    "Inspect invalid date values before calculating durations or time-based KPIs.",
+    "Investigate outliers before removing them; unusual values may be valid business events."
+  ]
+}
