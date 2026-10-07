@@ -33,3 +33,29 @@ def test_duplicate_rows_are_counted():
     profile = profile_dataframe(df)
 
     assert profile["summary"]["duplicate_rows"] == 1
+
+
+def test_iqr_rule_is_stable_for_sample_values():
+    df = pd.DataFrame(
+        {
+            "unit_price": [
+                39.99,
+                24.50,
+                19.00,
+                15.00,
+                999.00,
+                22.00,
+                18.00,
+                20.00,
+                21.00,
+                20.00,
+                20.50,
+                20.50,
+            ]
+        }
+    )
+
+    profile = profile_dataframe(df)
+    column = profile["columns"][0]
+
+    assert column["outlier_count"] == 3
