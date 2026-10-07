@@ -2,6 +2,15 @@
 
 All notable changes to Data Quality Detective are documented here.
 
+## Unreleased
+
+### Added
+
+- machine-readable JSON report output for scripts and CI workflows
+- `--format json` for JSON-only output
+- `--format all` for Markdown, HTML, and JSON in one run
+
+
 ## [0.1.0] - 2026-10-06
 
 First public release.
