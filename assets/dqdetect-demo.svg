@@ -79,7 +79,7 @@
   <rect x="1212" y="590" rx="12" ry="12" width="266" height="62" fill="#f5f3ff"/>
   <text x="1234" y="629" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#6d28d9">2 numeric columns with outliers</text>
 
-  <text x="1212" y="695" font-family="Inter, Arial, sans-serif" font-size="17" fill="#475569">Markdown · HTML · JSON</text>
+  <text x="1212" y="695" font-family="Inter, Arial, sans-serif" font-size="17" fill="#475569">Markdown · HTML</text>
 
   <text x="96" y="820" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600" fill="#ffffff">
     Flag what deserves attention. Leave the cleaning decision to the analyst.
