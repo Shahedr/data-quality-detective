@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
@@ -38,6 +39,10 @@ def _recommendations(profile):
         )
 
     return recommendations
+
+
+def _generated_timestamp():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def render_markdown(profile):
@@ -169,19 +174,34 @@ These checks are screening rules, not automatic cleaning instructions. Business 
 """
 
 
+def render_json(profile):
+    payload = {
+        "generated_at": _generated_timestamp(),
+        "summary": profile["summary"],
+        "columns": profile["columns"],
+        "recommendations": _recommendations(profile),
+    }
+    return json.dumps(payload, indent=2)
+
+
 def write_reports(profile, output_dir, stem, report_format="both"):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     written = []
 
-    if report_format in {"md", "both"}:
+    if report_format in {"md", "both", "all"}:
         markdown_path = output / f"{stem}_report.md"
         markdown_path.write_text(render_markdown(profile), encoding="utf-8")
         written.append(markdown_path)
 
-    if report_format in {"html", "both"}:
+    if report_format in {"html", "both", "all"}:
         html_path = output / f"{stem}_report.html"
         html_path.write_text(render_html(profile), encoding="utf-8")
         written.append(html_path)
+
+    if report_format in {"json", "all"}:
+        json_path = output / f"{stem}_report.json"
+        json_path.write_text(render_json(profile), encoding="utf-8")
+        written.append(json_path)
 
     return written
