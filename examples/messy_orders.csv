@@ -1,0 +1,13 @@
+order_id,order_date,customer_id,region,quantity,unit_price,freight_cost,status
+1,2025-01-03,C001,Midwest,1,39.99,12.50,Shipped
+2,2025-01-04,C002,South,2,24.50,Included,Delivered
+3,2025-01-05,C003,West,1,19.00,8.75,Delivered
+4,not-a-date,C004,Midwest,3,15.00,10.00,Delivered
+5,2025-01-08,,Northeast,1,999.00,45.00,Returned
+6,2025-01-09,C006,South,1,22.00,,Delivered
+7,2025-01-10,C007,West,2,18.00,9.25,Delivered
+8,2025-01-11,C008,Midwest,1,20.00,10.50,Delivered
+9,2025-01-12,C009,South,1,21.00,11.00,Delivered
+10,2025-01-13,C010,West,50,20.00,1500.00,Delivered
+11,2025-01-14,C011,Midwest,1,20.50,10.00,Delivered
+11,2025-01-14,C011,Midwest,1,20.50,10.00,Delivered
