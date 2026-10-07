@@ -29,9 +29,9 @@ def build_parser():
     )
     parser.add_argument(
         "--format",
-        choices=["md", "html", "both"],
+        choices=["md", "html", "json", "both", "all"],
         default="both",
-        help="Report format (default: both)",
+        help="Report format: md, html, json, both (md+html), or all (default: both)",
     )
     return parser
 
