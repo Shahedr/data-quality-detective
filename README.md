@@ -49,6 +49,12 @@ Rows: 12
 Columns: 8
 Duplicate rows: 1
 
+Issues found
+- 2 columns contain missing values
+- 1 column contains mixed numeric/text values
+- 1 date-like column contains invalid values
+- 2 numeric columns contain potential IQR outliers
+
 Reports written to:
   reports/messy_orders_report.md
   reports/messy_orders_report.html
@@ -82,6 +88,12 @@ dqdetect data.csv --format json
 ~~~
 
 The JSON file includes the dataset summary, per-column profile, issue flags, and recommendations. Use `--format all` when you want Markdown, HTML, and JSON from the same run.
+
+## Scope
+
+**dqdetect is a first-pass profiler, not an automatic data cleaner or full validation framework.** It is meant for the point where you have just received a file and want a quick, repeatable view of what deserves attention before deeper analysis.
+
+That is why the tool reports suspicious values without changing the source data.
 
 ## Why these checks?
 
