@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dqdetect"
+version = "0.1.0"
+description = "Command-line data quality profiler for CSV and Excel files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Shahed"}
+]
+dependencies = [
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "openpyxl>=3.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0"
+]
+
+[project.scripts]
+dqdetect = "dqdetect.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dqdetect*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
