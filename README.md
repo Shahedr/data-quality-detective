@@ -1,5 +1,7 @@
 # Data Quality Detective
 
+[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
+
 A small command-line tool for quickly profiling CSV and Excel files before analysis.
 
 I built this around a problem I keep running into in analytics work: a dataset can look usable at first, but the real issues only show up after checking missing values, duplicate rows, mixed numeric/text fields, date parsing, and unusual numeric values.
@@ -51,7 +53,7 @@ Reports written to:
   reports/messy_orders_report.html
 ~~~
 
-See **examples/messy_orders_report.md** for a sample report.
+See [examples/messy_orders_report.md](examples/messy_orders_report.md) for a sample report.
 
 ## CLI
 
