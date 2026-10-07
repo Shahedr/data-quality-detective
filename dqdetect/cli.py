@@ -6,6 +6,13 @@ from dqdetect.profiler import profile_dataframe
 from dqdetect.report import write_reports
 
 
+def _label(count, singular, plural=None):
+    if count == 1:
+        return singular
+
+    return plural or f"{singular}s"
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="dqdetect",
@@ -50,6 +57,11 @@ def main(argv=None):
         report_format=args.format,
     )
 
+    missing = summary["columns_with_missing"]
+    mixed = summary["mixed_numeric_text_columns"]
+    invalid_dates = summary["date_columns_with_invalid_values"]
+    outliers = summary["numeric_columns_with_outliers"]
+
     print("Data Quality Detective")
     print(f"File: {source}")
     print()
@@ -59,17 +71,33 @@ def main(argv=None):
     print()
     print("Issues found")
     print(
-        f"- {summary['columns_with_missing']} columns contain missing values"
+        f"- {missing} {_label(missing, 'column')} contain"
+        if missing != 1
+        else f"- {missing} column contains"
     )
     print(
-        f"- {summary['mixed_numeric_text_columns']} columns contain mixed numeric/text values"
+        f"  missing values"
+        if missing
+        else "  missing values"
     )
     print(
-        f"- {summary['date_columns_with_invalid_values']} date-like columns contain invalid values"
+        f"- {mixed} {_label(mixed, 'column')} contain"
+        if mixed != 1
+        else f"- {mixed} column contains"
     )
+    print("  mixed numeric/text values")
     print(
-        f"- {summary['numeric_columns_with_outliers']} numeric columns contain potential IQR outliers"
+        f"- {invalid_dates} {_label(invalid_dates, 'date-like column')} contain"
+        if invalid_dates != 1
+        else f"- {invalid_dates} date-like column contains"
     )
+    print("  invalid values")
+    print(
+        f"- {outliers} {_label(outliers, 'numeric column')} contain"
+        if outliers != 1
+        else f"- {outliers} numeric column contains"
+    )
+    print("  potential IQR outliers")
     print()
     print("Reports written to:")
     for path in written:
