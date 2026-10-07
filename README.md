@@ -8,6 +8,8 @@ I built this around a problem I keep running into in analytics work: a dataset c
 
 **dqdetect** puts those checks into one repeatable command and writes a report you can review or share.
 
+![Data Quality Detective demo](assets/dqdetect-demo.svg)
+
 ## Quick start
 
 ~~~bash
