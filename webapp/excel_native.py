@@ -11,6 +11,7 @@ Use macro mode only on reviewed workbooks in a disposable Windows VM.
 import argparse
 from datetime import datetime, timezone
 from html import escape
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -30,6 +31,14 @@ TRUST_PHRASE = "I UNDERSTAND VBA CAN RUN SYSTEM COMMANDS"
 
 class NativeExcelError(Exception):
     """Human-readable validation or Excel automation error."""
+
+
+def _hash_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as data:
+        for chunk in iter(lambda: data.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _sanitize(value):
@@ -76,6 +85,7 @@ def _render_html(report):
         ("Formulas inventoried", str(report["formulas_inventory_count"])),
         ("Formula results changed", str(report["formula_results_changed"])),
         ("Macro executed", str(report["macro_executed"])),
+        ("Source unchanged", str(report.get("original_unchanged"))),
     ]
     bits = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
             "<title>Data Quality Detective — Excel native audit</title>",
@@ -157,10 +167,16 @@ def run_native_audit(
 
     source, run_dir, workbook_copy = _prepare_workbook(source_file, output_dir)
     formulas = _collect_formulas(workbook_copy)
+    source_sha256 = _hash_file(source)
+    copy_sha256_before = _hash_file(workbook_copy)
     report = {
         "mode": mode,
         "source_filename": source.name,
         "working_copy": str(workbook_copy),
+        "source_sha256": source_sha256,
+        "copy_sha256_before": copy_sha256_before,
+        "copy_sha256_after": None,
+        "original_unchanged": None,
         "started_utc": datetime.now(timezone.utc).isoformat(),
         "excel_automation": "pending",
         "formulas_inventory_count": len(formulas),
@@ -266,6 +282,18 @@ def run_native_audit(
                 pythoncom.CoUninitialize()
             except Exception:
                 pass
+
+    # Compare hashes after Excel has finished. Macros can still write to
+    # arbitrary paths: a copy alone does not protect other files.
+    report["original_unchanged"] = (_hash_file(source) == source_sha256)
+    if not report["original_unchanged"]:
+        report["warnings"].append(
+            "WARNING: Original input file changed during the native audit. "
+            "Inspect immediately; a macro/add-in may have modified external files."
+        )
+        report["excel_automation"] = "failed"
+    if workbook_copy.exists():
+        report["copy_sha256_after"] = _hash_file(workbook_copy)
 
     (run_dir / "native_report.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False, default=str),
