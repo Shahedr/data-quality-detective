@@ -210,3 +210,11 @@ def test_macro_mode_rejects_unnecessary_macro_option_on_recalc(tmp_path):
     with pytest.raises(NativeExcelError, match="only accepted"):
         run_native_audit(source, tmp_path / "output",
                          mode="recalculate", macro_name="Module1.DoIt")
+
+
+
+def test_desktop_gui_wrapper_imports_without_windows_runtime():
+    """Importing the module alone must not launch or require a GUI."""
+    import webapp.excel_desktop as desktop
+    assert callable(desktop.launch)
+    assert callable(desktop.main)
