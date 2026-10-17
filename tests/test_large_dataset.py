@@ -54,3 +54,41 @@ def test_cli_profiles_50001_row_csv_and_writes_json(tmp_path):
     assert summary["date_columns_with_invalid_values"] == 1
     assert summary["numeric_columns_with_outliers"] == 1
     assert len(report["columns"]) == 5
+
+
+def test_cli_profiles_50001_row_excel_and_writes_json(tmp_path):
+    """End-to-end Excel profiling must also work above 50,000 rows."""
+    row_count = 50_001
+    df = pd.DataFrame(
+        {
+            "record_id": list(range(row_count - 1)) + [0],
+            "amount": [float(20 + index % 5) for index in range(row_count - 1)]
+            + [20.0],
+            "status": ["Shipped"] * row_count,
+        }
+    )
+    df.loc[4, "status"] = None
+
+    source = tmp_path / "large_orders.xlsx"
+    output_dir = tmp_path / "excel_reports"
+    df.to_excel(source, index=False)
+
+    exit_code = main(
+        [
+            str(source),
+            "--format",
+            "json",
+            "--output",
+            str(output_dir),
+        ]
+    )
+
+    report_path = output_dir / "large_orders_report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    summary = report["summary"]
+
+    assert exit_code == 0
+    assert summary["rows"] == row_count
+    assert summary["columns"] == 3
+    assert summary["duplicate_rows"] == 1
+    assert summary["columns_with_missing"] == 1
