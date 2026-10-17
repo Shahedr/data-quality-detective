@@ -68,6 +68,8 @@ def test_all_sheets_listed_and_explicit_selection_changes_report():
     assert body["summary"]["rows"] == 3
     assert body["workbook"]["formula_cells_count"] == 1
     assert body["workbook"]["broken_formula_refs"] == 1
+    # The actual cell D2 (data row 1, column index 3) is highlighted.
+    assert "formula_ref" in body["spreadsheet"]["rows"][0]["cell_flags"][3]
     assert body["worksheets"][2]["visibility"] == "hidden"
     assert body["worksheets"][1]["rows"] == 3
     assert body["vba_audit"]["source_scan_status"] == "no_vba"
@@ -104,6 +106,12 @@ def test_virtual_grid_pages_and_issue_filters_are_sheet_specific():
     assert dupes.status_code == 200, dupes.text
     assert [row["row_number"] for row in dupes.json()["rows"]] == [2, 3]
 
+    broken = call("/api/rows", "company.xlsx", raw, {
+        "sheet": "Orders", "issue": "formula_ref", "page": "1"
+    })
+    assert broken.status_code == 200, broken.text
+    assert [row["row_number"] for row in broken.json()["rows"]] == [1]
+
     no_duplicates = call("/api/rows", "company.xlsx", raw, {
         "sheet": "Inventory", "issue": "duplicate", "page": "1"
     })
@@ -125,6 +133,7 @@ def test_complete_html_export_contains_all_sheets_and_hidden_warning():
     assert "SKU-003" in html
     assert "not-a-date" in html
     assert "formula" in html
+    assert "Formula contains broken #REF! reference" in html
     assert html.count('<td class="row-index">') == 8
     assert "VBA code executed: No" in html
     assert '<script src=' not in html
