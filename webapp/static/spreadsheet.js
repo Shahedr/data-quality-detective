@@ -39,6 +39,7 @@
     loading: new Set(),
     pendingFrame: false,
     error: "",
+    failed: new Set(),
   };
 
   function element(tag, text, className) {
@@ -128,7 +129,8 @@
 
   function requestPage(page) {
     if (!state.file || page < 1 || state.cache.has(page) ||
-        state.loading.has(page) || state.loading.size >= MAX_IN_FLIGHT) return;
+        state.loading.has(page) || state.failed.has(page) ||
+        state.loading.size >= MAX_IN_FLIGHT) return;
     const epoch = state.epoch;
     const file = state.file;
     const selectedFilter = state.filter;
@@ -156,6 +158,7 @@
       })
       .catch(error => {
         if (epoch !== state.epoch) return;
+        state.failed.add(page);
         state.error = "Unable to load some rows: " + (error.message || "Unknown error");
         updateStatus();
       })
@@ -236,6 +239,7 @@
     const epoch = ++state.epoch;
     state.filter = value;
     state.loading = new Set();
+    state.failed = new Set();
     state.cache = new Map();
     state.count = 0;
     state.error = "";
@@ -280,6 +284,7 @@
     state.labels = snapshot.filter_labels;
     state.cache = new Map();
     state.loading = new Set();
+    state.failed = new Set();
     state.error = "";
     filterSelect.value = "all";
     filterSelect.disabled = false;
@@ -293,6 +298,7 @@
     state.file = null;
     state.cache.clear();
     state.loading.clear();
+    state.failed.clear();
     layer.replaceChildren();
   }
 
