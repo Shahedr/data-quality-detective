@@ -28,14 +28,23 @@ values as a read-only grid. Suspect cells are color-coded and labeled:
   (the overview reports only copies after the first)
 - **Constant column**: shown in the header, not falsely presented as a bad cell
 
-Select **All flagged rows** or a specific issue type, then use **Previous/Next**
-to browse the full input in 50-row pages. The browser retains the selected local
-file and **re-sends it to the local backend for each requested page**; the
-backend does not keep a dataset-session cache. Re-parsing large files for
-each page is a prototype limitation.
+Select **All flagged rows** or an individual issue type, then **scroll
+continuously through every accepted row**. There are no Previous/Next buttons.
+The virtualized viewer creates DOM elements for the visible rows only, so a
+50,001-row CSV does not require 50,001 HTML rows in the browser. You can
+scroll horizontally to view additional columns. The first column reports the
+original data row number.
 
-The HTML report download now contains an **actual highlighted excerpt of up to
-50 flagged rows**. It is intentionally an excerpt, not a 100,000-row export.
+Internally the app retrieves blocks of 50 rows from the existing `/api/rows`
+endpoint, sending the selected local file to the local backend again for
+each uncached block. Only recently viewed blocks are cached in the browser;
+the backend does not keep a dataset-session cache. Large datasets can
+therefore take longer to load additional sections, and continuous scrolling
+does not imply an unlimited file size.
+
+The **downloadable HTML report remains a summary plus an annotated excerpt
+of up to 50 flagged rows**, not a full-spreadsheet HTML export. The full
+scrollable spreadsheet is currently within the live browser app.
 Row numbers start at 1 after the header, so CSV files with embedded line breaks
 may not match text-editor physical line numbers. Displayed cell values are
 truncated at 500 characters; source files are never modified.
