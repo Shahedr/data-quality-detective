@@ -59,7 +59,7 @@ Reports written to:
   reports/messy_orders_report.html
 ~~~
 
-See [examples/messy_orders_report.md](examples/messy_orders_report.md) for the readable sample report or [examples/messy_orders_report.json](examples/messy_orders_report.json) for the machine-readable version.
+See [examples/messy_orders_report.md](examples/messy_orders_report.md) for the readable sample report.
 
 ## CLI
 
@@ -87,7 +87,7 @@ dqdetect data.csv --format json
 dqdetect data.csv --format all
 ~~~
 
-JSON output includes the dataset summary, per-column profile, issue flags, and recommendations.
+JSON output includes the dataset summary, per-column profile, issue flags, and recommendations. See [examples/messy_orders_report.json](examples/messy_orders_report.json) for the development sample.
 
 ## Scope
 
@@ -107,6 +107,7 @@ For example, a freight-cost field containing both dollar values and text such as
 data-quality-detective/
 ├── dqdetect/
 │   ├── __init__.py
+│   ├── __main__.py
 │   ├── checks.py
 │   ├── cli.py
 │   ├── io.py
@@ -117,7 +118,9 @@ data-quality-detective/
 │   ├── messy_orders_report.md
 │   └── messy_orders_report.json
 ├── tests/
-├── .github/workflows/tests.yml
+├── .github/workflows/
+│   ├── tests.yml
+│   └── publish-to-pypi.yml
 ├── CONTRIBUTING.md
 ├── LICENSE
 └── pyproject.toml
