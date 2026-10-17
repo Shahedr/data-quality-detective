@@ -32,6 +32,22 @@ python -m pip install -e ".[web,excel-native,macro-audit]"
 
 Keep your original workbook closed and backed up.
 
+## One-click Windows desktop interface
+
+To choose the file and reports directory through familiar Windows browse
+dialogs, launch:
+
+```powershell
+python -m webapp.excel_desktop
+```
+
+Select your XLSX or XLSM workbook, select a **different** output directory,
+and click **Recalculate and Create Audit Report**. When Excel returns, the
+GUI opens the local HTML report. This window only exposes formula recalculation
+with macros disabled during automated opening; it intentionally does not expose
+macro execution. Note that the desktop interface can wait indefinitely if
+Excel itself becomes unresponsive.
+
 ## Formula recalculation (macros disabled during automated opening)
 
 ```powershell
