@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Data Quality Detective · Browser Preview</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17233a;background:#f5f7fb;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}
+a{color:inherit}.shell{max-width:1200px;margin:0 auto;padding:0 30px}
+header{background:#fff;border-bottom:1px solid #e7eaf1}.top{height:75px;display:flex;justify-content:space-between;align-items:center}
+.brand{display:flex;gap:12px;align-items:center;font-size:17px;font-weight:800;letter-spacing:-.5px}
+.brand-mark{width:36px;height:36px;background:#223d91;border-radius:11px;color:white;display:grid;place-items:center;font-size:21px}
+.mini{font-size:12px;color:#8490a6;font-weight:600;letter-spacing:.1px}.preview{border:1px solid #d6e1ff;background:#f1f5ff;color:#2349a7;padding:7px 11px;border-radius:99px;font-size:12px;font-weight:700}
+main{padding-top:46px;padding-bottom:90px}.eyebrow{font-size:12px;letter-spacing:2px;color:#4267ce;text-transform:uppercase;font-weight:800}
+h1{font-size:clamp(32px,4vw,48px);line-height:1.14;letter-spacing:-2px;margin:12px 0 15px;max-width:800px}p.lead{color:#64738e;line-height:1.65;font-size:16px;max-width:710px;margin:0 0 31px}
+.upload-wrap{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+.panel{background:#fff;border:1px solid #e5eaf3;border-radius:20px;box-shadow:0 7px 24px rgba(23,39,72,.035)}
+.drop{min-height:212px;border:2px dashed #bfd0ed;border-radius:14px;background:#fafcff;padding:25px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:15px}
+.drop.dragover{background:#eef4ff;border-color:#4169d5}.upload-icon{font-size:34px;margin-bottom:10px}
+.drop strong{font-size:16px}.muted{color:#7b879b;font-size:13px;margin-top:7px;line-height:1.5}
+.actions{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:17px}
+.primary{background:#3157c3;color:#fff;border:0;border-radius:10px;font-weight:700;padding:12px 18px}
+.secondary{background:#fff;color:#2d4ca1;border:1px solid #cfd8ed;border-radius:10px;font-weight:700;padding:11px 17px}
+.help{padding:28px}.help h3{font-size:18px;letter-spacing:-.5px;margin:0 0 12px}
+.help p{line-height:1.65;color:#65728a;font-size:14px}.cap{display:inline-block;background:#edf2fd;border-radius:8px;color:#3157c3;padding:6px 10px;font-size:12px;font-weight:700;margin:7px 5px 0 0}
+.notice{font-size:12px;color:#73819a;margin-top:15px;line-height:1.6}
+#status{min-height:22px;font-size:13px;margin:14px 2px;color:#4267ce;font-weight:700}
+#status.error{color:#bd3838}.results{margin-top:29px} .hidden{display:none!important}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:0 0 17px}
+h2{font-size:24px;letter-spacing:-1px;margin:0}.file-sub{color:#8390a5;font-size:13px;margin:7px 0 0}
+.downloads{display:flex;gap:8px;flex-wrap:wrap}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.metric{padding:23px}.metric-label{font-size:13px;color:#7c8ba4;font-weight:650}
+.metric-value{font-size:32px;font-weight:800;letter-spacing:-1.4px;margin:10px 0 2px}
+.metric-note{color:#8893a6;font-size:12px}
+.content-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:16px}
+.issue-panel,.rec-panel{padding:24px}
+h3{margin:0 0 19px;font-size:17px;letter-spacing:-.4px}.bar-row{margin:15px 0}
+.bar-label{display:flex;justify-content:space-between;font-size:13px;gap:10px;margin-bottom:9px}
+.bar-label span:first-child{color:#60708b}.bar-label span:last-child{font-weight:750}
+.track{height:8px;background:#eef1f7;border-radius:40px;overflow:hidden}.fill{height:100%;background:#5c77cb;border-radius:40px;min-width:0}
+.rec-panel ul{padding:0;margin:0;list-style:none}.rec-panel li{padding:12px 0 12px 24px;border-bottom:1px solid #f0f2f6;position:relative;color:#566681;font-size:13px;line-height:1.55}
+.rec-panel li:last-child{border:0}.rec-panel li:before{content:"✓";position:absolute;left:0;color:#3868c0;font-weight:800}
+.table-panel{margin-top:16px;padding:24px}.table-scroll{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}
+th{background:#f8faff;color:#63718c;font-size:12px;padding:12px 10px;white-space:nowrap}
+td{padding:15px 10px;border-bottom:1px solid #f0f2f7;color:#46556f}
+td:first-child{font-weight:750;color:#24375b}
+.flag{padding:5px 8px;border-radius:8px;background:#fff4e3;color:#9d6512;font-size:11px;font-weight:700;display:inline-block;white-space:nowrap;margin:2px}
+.ok{background:#e9f8f0;color:#188557}
+footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:12px}
+@media(max-width:850px){.upload-wrap,.content-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,1fr)}.shell{padding:0 16px}}
+@media(max-width:460px){.metric-grid{grid-template-columns:1fr 1fr}.metric{padding:16px}.metric-value{font-size:25px}.top{height:64px}.brand{font-size:14px}.preview{font-size:10px}h1{letter-spacing:-1.2px}}
+</style>
+</head>
+<body>
+<header><div class="shell top">
+  <div class="brand"><span class="brand-mark">◈</span><span>Data Quality Detective</span></div>
+  <span class="preview">LOCAL MVP · NOT A HOSTED SERVICE</span>
+</div></header>
+<main class="shell">
+  <div class="eyebrow">Data confidence, in a few clicks</div>
+  <h1>Know what's wrong with your data before it costs you.</h1>
+  <p class="lead">Drop in a spreadsheet or CSV. Detect missing values, duplicates, suspicious numbers and invalid dates. Get an easy-to-read report—without writing a line of code.</p>
+
+  <div class="upload-wrap">
+    <section class="panel">
+      <div class="drop" id="drop">
+        <div class="upload-icon">↥</div>
+        <strong id="fileTitle">Drag and drop a file here</strong>
+        <div class="muted">CSV or Excel (.xlsx) · up to 10 MB · 100,000 rows / 200 columns in this preview</div>
+        <div class="actions">
+          <button class="primary" id="choose">Choose file</button>
+          <button class="secondary" id="sample">Try example data</button>
+        </div>
+        <input type="file" id="upload" accept=".csv,.xlsx" class="hidden" aria-label="Select CSV or Excel file">
+      </div>
+    </section>
+    <aside class="panel help">
+      <h3>What gets checked?</h3>
+      <p>Every column is profiled with the same proven Python checks used by our <strong>dqdetect</strong> command-line tool.</p>
+      <span class="cap">Missing data</span><span class="cap">Duplicates</span><span class="cap">Invalid dates</span><span class="cap">Outliers</span><span class="cap">Mixed types</span>
+      <div class="notice">Prototype: no accounts or payments. Files are processed by the local server and aren't saved to an application database. Do not use for sensitive data on a publicly exposed deployment.</div>
+    </aside>
+  </div>
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <section class="results hidden" id="results">
+    <div class="section-head">
+      <div><h2>Your data quality snapshot</h2><div class="file-sub" id="source">Source</div></div>
+      <div class="downloads">
+        <button class="secondary" id="downloadJson">↓ Download JSON</button>
+        <button class="secondary" id="downloadHtml">↓ Download HTML report</button>
+      </div>
+    </div>
+    <div class="metric-grid">
+      <div class="panel metric"><div class="metric-label">Total rows</div><div class="metric-value" id="rows">—</div><div class="metric-note">Analyzed</div></div>
+      <div class="panel metric"><div class="metric-label">Columns</div><div class="metric-value" id="cols">—</div><div class="metric-note">Profiled</div></div>
+      <div class="panel metric"><div class="metric-label">Duplicate rows</div><div class="metric-value" id="dupes">—</div><div class="metric-note">Potential repeats</div></div>
+      <div class="panel metric"><div class="metric-label">Columns with missing data</div><div class="metric-value" id="missing">—</div><div class="metric-note">Require review</div></div>
+    </div>
+    <div class="content-grid">
+      <div class="panel issue-panel"><h3>Issue overview</h3><div id="issues"></div></div>
+      <div class="panel rec-panel"><h3>What to review next</h3><ul id="recommendations"></ul></div>
+    </div>
+    <div class="panel table-panel">
+      <h3>Column-by-column profile</h3>
+      <div class="table-scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th><th>Outliers</th><th>Detected issues</th></tr></thead><tbody id="columns"></tbody></table></div>
+    </div>
+  </section>
+</main>
+<footer><div class="shell">Data Quality Detective · Browser preview · Detect → Report → Review → Decide. Results are diagnostic, not automatic corrections.</div></footer>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let lastReport=null;
+let running=false;
+const SAMPLE_CSV=[
+"order_id,order_date,customer_id,region,quantity,unit_price,freight_cost,status",
+"1,2025-01-03,C001,Midwest,1,39.99,12.50,Shipped",
+"2,2025-01-04,C002,South,2,24.50,Included,Delivered",
+"3,2025-01-05,C003,West,1,19.00,8.75,Delivered",
+"4,not-a-date,C004,Midwest,3,15.00,10.00,Delivered",
+"5,2025-01-08,,Northeast,1,999.00,45.00,Returned",
+"6,2025-01-09,C006,South,1,22.00,,Delivered",
+"7,2025-01-10,C007,West,2,18.00,9.25,Delivered",
+"8,2025-01-11,C008,Midwest,1,20.00,10.50,Delivered",
+"9,2025-01-12,C009,South,1,21.00,11.00,Delivered",
+"10,2025-01-13,C010,West,50,20.00,1500.00,Delivered",
+"11,2025-01-14,C011,Midwest,1,20.50,10.00,Delivered",
+"11,2025-01-14,C011,Midwest,1,20.50,10.00,Delivered"].join("\n");
+function setStatus(message,isError=false){$("status").textContent=message;$("status").className=isError?"error":"";}
+function item(tag,text,className){const el=document.createElement(tag);el.textContent=String(text);if(className)el.className=className;return el;}
+function showReport(data){
+  lastReport=data;
+  const s=data.summary;
+  $("source").textContent="Source: "+s.source;
+  for(const [id,key] of [["rows","rows"],["cols","columns"],["dupes","duplicate_rows"],["missing","columns_with_missing"]]){$(id).textContent=Number(s[key]).toLocaleString();}
+  const metrics=[["Duplicate rows","duplicate_rows"],["Columns with missing data","columns_with_missing"],["Constant columns","constant_columns"],["Mixed numeric/text columns","mixed_numeric_text_columns"],["Invalid-date columns","date_columns_with_invalid_values"],["Columns with outliers","numeric_columns_with_outliers"]];
+  const max=Math.max(1,...metrics.map(v=>Number(s[v[1]])||0));
+  $("issues").replaceChildren();
+  for(const [label,key] of metrics){
+    const container=item("div","","bar-row");const heading=item("div","","bar-label");
+    heading.append(item("span",label),item("span",s[key]));
+    const track=item("div","","track");const fill=item("div","","fill");fill.style.width=((Number(s[key])||0)/max*100)+"%";
+    track.append(fill);container.append(heading,track);$("issues").append(container);
+  }
+  $("recommendations").replaceChildren();
+  for(const recommendation of data.recommendations){$("recommendations").append(item("li",recommendation));}
+  $("columns").replaceChildren();
+  for(const column of data.columns){
+    const tr=document.createElement("tr");
+    for(const val of [column.column,column.dtype,column.missing_count+" ("+column.missing_pct+"%)",column.unique_count,column.outlier_count]){
+      tr.append(item("td",val));
+    }
+    const flags=document.createElement("td");
+    for(const flag of (column.issues.length?column.issues:["No issues"])){flags.append(item("span",flag,flag==="No issues"?"flag ok":"flag"));}
+    tr.append(flags);$("columns").append(tr);
+  }
+  $("results").classList.remove("hidden");
+}
+async function analyzeFile(file){
+  if(running)return;
+  if(!file)return;
+  running=true;$("choose").disabled=true;$("sample").disabled=true;
+  setStatus("Analyzing "+file.name+" …");
+  $("fileTitle").textContent=file.name;
+  $("results").classList.add("hidden");
+  const body=new FormData();body.append("file",file);
+  try{
+    const response=await fetch("/api/analyze",{method:"POST",body,cache:"no-store"});
+    const payload=await response.json();
+    if(!response.ok)throw new Error(typeof payload.detail==="string"?payload.detail:"Analysis failed.");
+    showReport(payload);setStatus("Analysis complete. Review your findings below.");
+  }catch(error){setStatus(error.message||"Unable to analyze file.",true);}
+  finally{running=false;$("choose").disabled=false;$("sample").disabled=false;}
+}
+$("choose").addEventListener("click",()=> $("upload").click());
+$("upload").addEventListener("change",e=>analyzeFile(e.target.files[0]));
+$("sample").addEventListener("click",()=>analyzeFile(new File([SAMPLE_CSV],"messy_orders.csv",{type:"text/csv"})));
+$("drop").addEventListener("dragover",e=>{e.preventDefault();$("drop").classList.add("dragover");});
+$("drop").addEventListener("dragleave",()=> $("drop").classList.remove("dragover"));
+$("drop").addEventListener("drop",e=>{e.preventDefault();$("drop").classList.remove("dragover");if(e.dataTransfer.files.length)analyzeFile(e.dataTransfer.files[0]);});
+function download(content,kind,extension){
+  const blob=new Blob([content],{type:kind});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download=(lastReport?.summary?.source||"dataset").replace(/\.(csv|xlsx)$/i,"")+"_report."+extension;
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$("downloadJson").addEventListener("click",()=>{if(lastReport)download(JSON.stringify(lastReport.report_json,null,2),"application/json","json");});
+$("downloadHtml").addEventListener("click",()=>{if(lastReport)download(lastReport.report_html,"text/html","html");});
+</script>
+</body>
+</html>
