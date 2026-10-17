@@ -15,6 +15,31 @@ Open **http://127.0.0.1:8000** and select **Try example data** or upload a CSV/X
 
 The browser requests `POST /api/analyze` and displays the real Python profiler results. It can download **JSON and HTML** reports; there is no mock analysis.
 
+## Inspect the actual data
+
+After analysis, **Inspect your actual spreadsheet** displays uploaded CSV/Excel
+values as a read-only grid. Suspect cells are color-coded and labeled:
+
+- **Missing value**: blank/null cell
+- **Invalid date**: a value that fails date parsing in date-like columns
+- **Mixed numeric/text**: a value belonging to the minority class
+- **Potential IQR outlier**: an unusual numeric value under the existing 1.5× IQR rule
+- **Duplicate row**: all rows belonging to an exact duplicate group are marked
+  (the overview reports only copies after the first)
+- **Constant column**: shown in the header, not falsely presented as a bad cell
+
+Select **All flagged rows** or a specific issue type, then use **Previous/Next**
+to browse the full input in 50-row pages. The browser retains the selected local
+file and **re-sends it to the local backend for each requested page**; the
+backend does not keep a dataset-session cache. Re-parsing large files for
+each page is a prototype limitation.
+
+The HTML report download now contains an **actual highlighted excerpt of up to
+50 flagged rows**. It is intentionally an excerpt, not a 100,000-row export.
+Row numbers start at 1 after the header, so CSV files with embedded line breaks
+may not match text-editor physical line numbers. Displayed cell values are
+truncated at 500 characters; source files are never modified.
+
 ## Current preview restrictions
 
 - Only CSV and XLSX uploads; first Excel worksheet is analyzed.

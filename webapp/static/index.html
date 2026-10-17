@@ -53,6 +53,42 @@ td:first-child{font-weight:750;color:#24375b}
 footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:12px}
 @media(max-width:850px){.upload-wrap,.content-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,1fr)}.shell{padding:0 16px}}
 @media(max-width:460px){.metric-grid{grid-template-columns:1fr 1fr}.metric{padding:16px}.metric-value{font-size:25px}.top{height:64px}.brand{font-size:14px}.preview{font-size:10px}h1{letter-spacing:-1.2px}}
+
+/* Interactive spreadsheet inspector */
+.grid-panel{padding:24px;margin-top:18px}
+.grid-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+.grid-head h3{margin:0}
+.grid-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid-controls label{font-size:12px;font-weight:700;color:#536581}
+.grid-controls select{padding:9px 10px;background:#fff;border:1px solid #cfd8ed;border-radius:9px;color:#253758;max-width:230px}
+.grid-key{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 16px}
+.grid-key span{padding:5px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.key-duplicate{background:#fff0ed;color:#a74927}
+.key-missing{background:#ffeded;color:#b43535}
+.key-invalid_date{background:#fff0db;color:#975300}
+.key-mixed{background:#edf0ff;color:#4556a1}
+.key-outlier{background:#ffeffa;color:#9c3975}
+.grid-scroll{overflow:auto;border:1px solid #e7ebf3;border-radius:10px;max-height:540px}
+.grid-scroll table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
+.grid-scroll th{position:sticky;top:0;z-index:2;background:#edf2fa;border-bottom:1px solid #d9e0ed;white-space:nowrap;max-width:290px}
+.grid-scroll td{min-width:110px;max-width:290px;overflow-wrap:anywhere;vertical-align:top;border-right:1px solid #edf0f5}
+.grid-scroll .row-number{font-variant-numeric:tabular-nums;background:#f7f9fd;font-weight:750;min-width:76px;position:sticky;left:0;z-index:1}
+.grid-scroll th:first-child{position:sticky;left:0;z-index:3}
+.grid-scroll tr.is-duplicate .row-number{background:#fff0ed;color:#974b28}
+.grid-scroll td.cell-missing{background:#ffeded}
+.grid-scroll td.cell-invalid_date{background:#fff0db}
+.grid-scroll td.cell-mixed{background:#edf0ff}
+.grid-scroll td.cell-outlier{background:#ffeffa}
+.grid-scroll .data-value{display:block;white-space:pre-wrap}
+.grid-scroll .data-missing{color:#a73737;font-style:italic}
+.grid-scroll .cell-note{font-size:10px;display:block;font-weight:750;margin-top:5px;opacity:.75}
+.grid-scroll .duplicate-tag{color:#a74927;font-size:10px;font-weight:800}
+.grid-footer{display:flex;gap:15px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:15px}
+.grid-footer .muted{margin:0}
+.grid-page-actions{display:flex;gap:8px;align-items:center}
+.grid-page-actions button{padding:8px 11px}
+.constant-head{font-weight:650;font-size:10px;color:#a56c22;display:block;margin-top:4px}
+
 </style>
 </head>
 <body>
@@ -105,6 +141,47 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="panel issue-panel"><h3>Issue overview</h3><div id="issues"></div></div>
       <div class="panel rec-panel"><h3>What to review next</h3><ul id="recommendations"></ul></div>
     </div>
+
+    <div class="panel grid-panel" id="gridPanel">
+      <div class="grid-head">
+        <div>
+          <h3>Inspect your actual spreadsheet</h3>
+          <div class="muted">Highlighted cells are candidates for review; the source file is never modified.</div>
+        </div>
+        <div class="grid-controls">
+          <label for="gridFilter">Show rows</label>
+          <select id="gridFilter" aria-label="Filter spreadsheet rows">
+            <option value="all">All rows</option>
+            <option value="flagged">All flagged rows</option>
+            <option value="duplicate">Duplicate rows</option>
+            <option value="missing">Missing values</option>
+            <option value="invalid_date">Invalid dates</option>
+            <option value="mixed">Mixed numeric/text</option>
+            <option value="outlier">Potential outliers</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-key" aria-label="Flag colors">
+        <span class="key-duplicate">Duplicate row</span><span class="key-missing">Missing</span>
+        <span class="key-invalid_date">Invalid date</span><span class="key-mixed">Mixed type</span>
+        <span class="key-outlier">Outlier</span>
+      </div>
+      <div class="grid-scroll" role="region" aria-label="Scrollable spreadsheet data" tabindex="0">
+        <table id="gridTable">
+          <thead><tr id="gridColumns"></tr></thead>
+          <tbody id="gridRows"></tbody>
+        </table>
+      </div>
+      <div class="grid-footer">
+        <div class="muted" id="gridCount" aria-live="polite"></div>
+        <div class="grid-page-actions">
+          <button class="secondary" id="gridPrev">← Previous</button>
+          <span id="gridPage" class="muted"></span>
+          <button class="secondary" id="gridNext">Next →</button>
+        </div>
+      </div>
+      <p class="notice">Rows are paged 50 at a time for speed. Each page re-reads your selected local file; it is not stored in an app database. Data-row numbering excludes the header. A duplicate group highlights every matching row, while the overview counts additional copies only. Constant columns are indicated in their header.</p>
+    </div>
     <div class="panel table-panel">
       <h3>Column-by-column profile</h3>
       <div class="table-scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th><th>Outliers</th><th>Detected issues</th></tr></thead><tbody id="columns"></tbody></table></div>
@@ -116,6 +193,11 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 "use strict";
 const $=id=>document.getElementById(id);
 let lastReport=null;
+let currentFile=null;
+let gridPage=1;
+let gridPages=1;
+let gridFilter="all";
+let gridLoading=false;
 let running=false;
 const SAMPLE_CSV=[
 "order_id,order_date,customer_id,region,quantity,unit_price,freight_cost,status",
@@ -135,6 +217,7 @@ function setStatus(message,isError=false){$("status").textContent=message;$("sta
 function item(tag,text,className){const el=document.createElement(tag);el.textContent=String(text);if(className)el.className=className;return el;}
 function showReport(data){
   lastReport=data;
+  if(data.spreadsheet)renderGrid(data.spreadsheet);
   const s=data.summary;
   $("source").textContent="Source: "+s.source;
   for(const [id,key] of [["rows","rows"],["cols","columns"],["dupes","duplicate_rows"],["missing","columns_with_missing"]]){$(id).textContent=Number(s[key]).toLocaleString();}
@@ -161,6 +244,71 @@ function showReport(data){
   }
   $("results").classList.remove("hidden");
 }
+
+function renderGrid(snapshot){
+  const thead=$("gridColumns");
+  const tbody=$("gridRows");
+  thead.replaceChildren();
+  tbody.replaceChildren();
+  thead.append(item("th","Data row"));
+  for(let i=0;i<snapshot.columns.length;i++){
+    const th=item("th",snapshot.columns[i]);
+    if(lastReport?.columns?.[i]?.constant)th.append(item("small","Constant column","constant-head"));
+    thead.append(th);
+  }
+  const labels=snapshot.filter_labels;
+  for(const row of snapshot.rows){
+    const tr=document.createElement("tr");
+    if(row.row_flags.includes("duplicate"))tr.className="is-duplicate";
+    const num=item("td",row.row_number,"row-number");
+    if(row.row_flags.includes("duplicate"))num.append(item("div","Duplicate group","duplicate-tag"));
+    tr.append(num);
+    for(let i=0;i<row.values.length;i++){
+      const flags=row.cell_flags[i];
+      const cell=document.createElement("td");
+      if(flags.length)cell.classList.add("cell-"+flags[0]);
+      cell.title=flags.map(f=>labels[f]).join("; ");
+      cell.append(item("span",row.values[i]===null?"(blank)":row.values[i],
+                       "data-value"+(row.values[i]===null?" data-missing":"")));
+      if(flags.length)cell.append(item("small",flags.map(f=>labels[f]).join(" · "),"cell-note"));
+      tr.append(cell);
+    }
+    tbody.append(tr);
+  }
+  if(!snapshot.rows.length){
+    const tr=document.createElement("tr"),td=item("td","No rows match this filter.");
+    td.colSpan=snapshot.columns.length+1;tr.append(td);tbody.append(tr);
+  }
+  gridPage=snapshot.page;gridPages=snapshot.pages;gridFilter=snapshot.filter;
+  $("gridFilter").value=gridFilter;
+  $("gridCount").textContent=snapshot.total_matching_rows.toLocaleString()+" matching rows · "+snapshot.flagged_rows.toLocaleString()+" flagged rows in the file · "+snapshot.total_rows.toLocaleString()+" total";
+  $("gridPage").textContent="Page "+snapshot.page.toLocaleString()+" of "+snapshot.pages.toLocaleString();
+  $("gridPrev").disabled=snapshot.page<=1;
+  $("gridNext").disabled=snapshot.page>=snapshot.pages;
+}
+async function loadGrid(page,issue){
+  if(gridLoading||!currentFile)return;
+  gridLoading=true;
+  $("gridPrev").disabled=true;$("gridNext").disabled=true;$("gridFilter").disabled=true;
+  $("gridCount").textContent="Loading spreadsheet page…";
+  const body=new FormData();
+  body.append("file",currentFile);body.append("page",String(page));body.append("issue",issue);
+  try{
+    const response=await fetch("/api/rows",{method:"POST",body,cache:"no-store"});
+    const data=await response.json();
+    if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:"Could not load rows.");
+    renderGrid(data);
+  }catch(error){
+    $("gridCount").textContent="Could not load grid: "+(error.message||"Unknown error");
+    $("gridFilter").value=gridFilter;
+    $("gridPrev").disabled=gridPage<=1;
+    $("gridNext").disabled=gridPage>=gridPages;
+  }finally{$("gridFilter").disabled=false;gridLoading=false;}
+}
+$("gridFilter").addEventListener("change",e=>loadGrid(1,e.target.value));
+$("gridPrev").addEventListener("click",()=>loadGrid(gridPage-1,gridFilter));
+$("gridNext").addEventListener("click",()=>loadGrid(gridPage+1,gridFilter));
+
 async function analyzeFile(file){
   if(running)return;
   if(!file)return;
@@ -173,7 +321,7 @@ async function analyzeFile(file){
     const response=await fetch("/api/analyze",{method:"POST",body,cache:"no-store"});
     const payload=await response.json();
     if(!response.ok)throw new Error(typeof payload.detail==="string"?payload.detail:"Analysis failed.");
-    showReport(payload);setStatus("Analysis complete. Review your findings below.");
+    currentFile=file;showReport(payload);setStatus("Analysis complete. Review the highlighted spreadsheet rows below.");
   }catch(error){setStatus(error.message||"Unable to analyze file.",true);}
   finally{running=false;$("choose").disabled=false;$("sample").disabled=false;}
 }
