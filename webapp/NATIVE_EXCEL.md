@@ -7,8 +7,8 @@ called from a web upload or API**.
 
 ## Supported and verified status
 
-- **Implemented:** launch an independent Excel COM instance using \`pywin32\`,
-  open a *working copy*, recalculate formulas with \`CalculateFullRebuild\`, compare
+- **Implemented:** launch an independent Excel COM instance using `pywin32`,
+  open a *working copy*, recalculate formulas with `CalculateFullRebuild`, compare
   Excel's values to the original saved formula caches, save the working copy,
   and write JSON + standalone HTML audit reports. Source and copy SHA-256
   fingerprints provide audit traceability.
@@ -26,25 +26,25 @@ called from a web upload or API**.
 Microsoft Excel desktop installed on **Windows**, Python 3.10+, your GitHub ZIP
 project folder, and the optional native dependency installed from that folder:
 
-\`\`\`powershell
+```powershell
 python -m pip install -e ".[web,excel-native,macro-audit]"
-\`\`\`
+```
 
 Keep your original workbook closed and backed up.
 
 ## Formula recalculation (macros disabled during automated opening)
 
-\`\`\`powershell
+```powershell
 python -m webapp.excel_native --file "C:\Data\workbook.xlsm" --output-dir "C:\DQD-Reports" --mode recalculate
-\`\`\`
+```
 
 Replace the example file path with your real file path. The output directory
 **must differ from the source workbook directory**. The tool creates a new
-unique \`excel_native_...\` run directory containing the workbook **copy**,
-\`native_report.json\`, and \`native_report.html\`.
+unique `excel_native_...` run directory containing the workbook **copy**,
+`native_report.json`, and `native_report.html`.
 
-Normal recalculation mode sets \`AutomationSecurity\` to Excel's
-\`msoAutomationSecurityForceDisable\`, disables events, and prevents automatic
+Normal recalculation mode sets `AutomationSecurity` to Excel's
+`msoAutomationSecurityForceDisable`, disables events, and prevents automatic
 link updates while opening. It does not intentionally execute VBA macros.
 **Excel add-ins, XLM macro prompts, external workbook behavior, or formulas
 using external services can still present risk**, and this is not an isolation
@@ -62,18 +62,18 @@ Windows VM or sandbox**, not on a production/work computer holding sensitive
 information. Copying a workbook is not a security sandbox: a macro can edit
 other files, invoke system commands, or reach the internet.
 
-For a trusted macro such as \`Module1.ReviewData\`:
+For a trusted macro such as `Module1.ReviewData`:
 
-\`\`\`powershell
+```powershell
 python -m webapp.excel_native --file "C:\Data\trusted.xlsm" --output-dir "C:\DQD-Reports" --mode macro --macro-name "Module1.ReviewData" --confirm-trust "I UNDERSTAND VBA CAN RUN SYSTEM COMMANDS"
-\`\`\`
+```
 
 - Microsoft Excel is opened **visibly** in a new Excel instance.
 - The tool **never switches Trust Center to enable all macros**, does not
   modify trusted locations or user registry settings, and does not enable
   programmatic VBA-project editing. It follows **your current Trust Center
   setting**, including any prompts or restrictions.
-- The designated \`Application.Run\` macro runs **only if permitted by Excel**.
+- The designated `Application.Run` macro runs **only if permitted by Excel**.
   Excel may block it; this is a failure that the tool reports. Never weaken
   Trust Center security merely to get a green result.
 - Events are disabled during opening, but once a macro starts, it has normal
