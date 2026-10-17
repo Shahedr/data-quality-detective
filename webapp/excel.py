@@ -103,8 +103,8 @@ def inspect_excel(data: bytes, df, is_xlsm: bool, worksheet_name=None):
             if (2 <= cell.row <= len(df) + 1 and
                     1 <= cell.column <= len(df.columns) and
                     "#REF!" in str(cell.value)):
-                formula_mask = masks.setdefault(
-                    cell.column - 1, np.zeros(len(df), dtype=bool)
+                formula_mask = masks.setdefault(cell.column - 1, {}).setdefault(
+                    "formula_ref", np.zeros(len(df), dtype=bool)
                 )
                 formula_mask[cell.row - 2] = True
         rule_details = []
@@ -124,7 +124,9 @@ def inspect_excel(data: bytes, df, is_xlsm: bool, worksheet_name=None):
                 left, top, right, bottom = cell_range.bounds
                 for column_index in range(max(1, left), min(right, len(df.columns)) + 1):
                     col = column_index - 1
-                    mask = masks.setdefault(col, np.zeros(len(df), dtype=bool))
+                    mask = masks.setdefault(col, {}).setdefault(
+                        "dropdown_invalid", np.zeros(len(df), dtype=bool)
+                    )
                     for excel_row in range(max(2, top), min(bottom, len(df) + 1) + 1):
                         pos = excel_row - 2
                         value = df.iat[pos, col]
