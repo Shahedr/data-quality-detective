@@ -1,6 +1,7 @@
 # Data Quality Detective
 
-[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) [![PyPI](https://img.shields.io/pypi/v/dqdetect.svg)](https://pypi.org/project/dqdetect/) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
+<!-- Update the pinned PyPI badge and link when publishing a new package version. -->
+[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) [![PyPI v1.0.0](https://img.shields.io/badge/PyPI-v1.0.0-blue)](https://pypi.org/project/dqdetect/1.0.0/) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
 
 A lightweight Python CLI for the first pass through a new dataset.
 
