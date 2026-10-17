@@ -110,3 +110,41 @@ def test_user_column_text_is_escaped_in_html_report():
     html = response.json()["report_html"]
     assert "&lt;img" in html
     assert '<img src=x onerror=alert(1)>' not in html
+
+
+def test_virtual_scroll_assets_and_browser_layout():
+    """The browser loads an accessible virtualized grid with no page buttons."""
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "Explore the entire spreadsheet" in page.text
+    assert 'id="gridViewport"' in page.text
+    assert 'id="gridCanvas"' in page.text
+    assert 'id="gridRows"' in page.text
+    assert 'id="gridPrev"' not in page.text
+    assert 'id="gridNext"' not in page.text
+    assert 'src="/spreadsheet.js"' in page.text
+
+    script = client.get("/spreadsheet.js")
+    assert script.status_code == 200
+    assert "application/javascript" in script.headers["content-type"]
+    assert "requestAnimationFrame" in script.text
+    assert "ROW_HEIGHT" in script.text
+    assert 'window.DQDSpreadsheet = {start, stop}' in script.text
+
+
+def test_virtual_grid_script_passes_node_syntax_check_if_available(tmp_path):
+    """Catch JavaScript syntax errors on runners with Node installed."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        import pytest
+        pytest.skip("Node is not installed in this environment")
+
+    script = tmp_path / "spreadsheet.js"
+    script.write_bytes(client.get("/spreadsheet.js").content)
+    result = subprocess.run(
+        [node, "--check", str(script)], capture_output=True, text=True, timeout=30
+    )
+    assert result.returncode == 0, result.stderr
