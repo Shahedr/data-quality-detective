@@ -50,6 +50,9 @@ web = [
   "uvicorn>=0.30",
   "python-multipart>=0.0.9"
 ]
+excel-native = [
+  "pywin32>=306; sys_platform == 'win32'"
+]
 macro-audit = [
   "oletools>=0.60.2"
 ]
