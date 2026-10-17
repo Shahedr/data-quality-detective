@@ -1,8 +1,7 @@
-"""Stream a complete, read-only spreadsheet into a standalone HTML report.
+"""Stream complete annotated HTML reports for CSVs or multi-sheet workbooks.
 
-Unlike the JSON dashboard response, this iterates through ALL accepted
-data rows, including those with no detected issues. A full HTML table
-can be large; use the virtualized web viewer for very wide/large data.
+Reports are read-only snapshots. They never contain executable VBA, workbook
+formula logic, or external scripts. All user-supplied text is HTML-escaped.
 """
 
 from html import escape
@@ -10,7 +9,6 @@ import math
 
 from dqdetect.report import render_html
 from webapp.inspect import ISSUE_LABELS, PAGE_SIZE, inspect_dataframe, prepare_inspection
-
 
 _STYLES = """
 .full-grid-wrap{border:1px solid #d7dfed;border-radius:10px;overflow:auto;
@@ -30,38 +28,46 @@ _STYLES = """
 .flagged-note{display:block;font-size:.72rem;font-weight:700;margin-top:4px}
 .export-note{font-size:.85rem;color:#576781}
 .export-meta{padding:12px 16px;border-left:4px solid #718bbf;background:#f2f6ff}
+.sheet-separator{margin:28px 0;border-top:3px solid #dfe6f5;padding-top:15px}
 """
 
 
-def full_html_chunks(profile, df, workbook=None, dropdown_masks=None):
-    """Yield HTML text chunks; do not materialize a huge HTML string."""
-    base = render_html(profile)
-    base = base.replace("</style>", _STYLES + "\n</style>", 1)
+def _open_html(profile):
+    base = render_html(profile).replace("</style>", _STYLES + "\n</style>", 1)
     opening, delimiter, closing = base.partition("</body>")
     if not delimiter:
         raise ValueError("Base HTML report has no closing body tag.")
-    yield opening
-    yield '<section id="full-spreadsheet"><h2>Full spreadsheet — all rows</h2>'
+    return opening, closing
+
+
+def _grid_chunks(df, workbook=None, dropdown_masks=None, sheet_name=None):
+    if sheet_name is not None:
+        yield ('<section class="sheet-separator" id="sheet-' +
+               escape(str(sheet_name), quote=True) + '"><h2>Worksheet: ' +
+               escape(str(sheet_name)) + '</h2>')
+    else:
+        yield '<section id="full-spreadsheet"><h2>Full spreadsheet — all rows</h2>'
     yield (
-        "<p class=\"export-note\">Every accepted row is included, not just "
-        "the first 50 flagged rows. This is a read-only snapshot of loaded "
-        "cell values and quality-screening flags. It is not an Excel workbook "
-        "and does not contain executable VBA, formulas, or functional dropdowns. "
-        "Some very large HTML reports may be slow to open.</p>"
+        '<p class="export-note">Every accepted row is included. This is a '
+        "read-only diagnostic snapshot, not a spreadsheet program. "
+        "VBA, cell formulas, functional dropdown controls, styles and "
+        "conditional-formatting behavior are not reproduced.</p>"
     )
     if workbook:
-        yield "<div class=\"export-meta\"><strong>Excel workbook review</strong><ul>"
+        yield '<div class="export-meta"><strong>Excel worksheet review</strong><ul>'
         yield "<li>Worksheet: " + escape(str(workbook["worksheet_analyzed"])) + "</li>"
         yield (
             "<li>Dropdown/list rules: " + str(workbook["dropdown_rules"])
             + "; unchecked rules: " + str(workbook["dropdown_rules_unchecked"])
             + "; invalid selected cells: " + str(workbook["dropdown_invalid_cells"]) + "</li>"
         )
+        yield "<li>Formulas: " + str(workbook.get("formula_cells_count", 0)) + "</li>"
+        yield "<li>Excel tables: " + str(workbook.get("excel_tables", 0)) + "</li>"
         yield "<li>VBA code executed: No</li>"
         for warning in workbook["warnings"]:
             yield "<li>" + escape(warning) + "</li>"
         yield "</ul></div>"
-    yield "<div class=\"full-grid-wrap\" role=\"region\" tabindex=\"0\" aria-label=\"Scrollable full spreadsheet\">"
+    yield '<div class="full-grid-wrap" role="region" tabindex="0" aria-label="Scrollable full spreadsheet">'
     yield '<table class="full-grid"><thead><tr><th class="row-index">Data row</th><th>Duplicate group</th>'
     for column in df.columns:
         yield "<th>" + escape(str(column)) + "</th>"
@@ -70,25 +76,76 @@ def full_html_chunks(profile, df, workbook=None, dropdown_masks=None):
     prepared = prepare_inspection(df, dropdown_masks)
     num_pages = max(1, math.ceil(len(df) / PAGE_SIZE))
     for page in range(1, num_pages + 1):
-        chunk = inspect_dataframe(
+        snapshot = inspect_dataframe(
             df, page=page, issue="all", prepared=prepared, cell_limit=None
         )
-        output = []
-        for row in chunk["rows"]:
+        parts = []
+        for row in snapshot["rows"]:
             duplicate = bool(row["row_flags"])
             row_class = ' class="duplicate"' if duplicate else ""
-            output.append(f"<tr{row_class}><td class=\"row-index\">{row['row_number']}</td>")
-            output.append("<td>" + ("Duplicate group" if duplicate else "") + "</td>")
+            parts.append(f'<tr{row_class}><td class="row-index">{row["row_number"]}</td>')
+            parts.append("<td>" + ("Duplicate group" if duplicate else "") + "</td>")
             for value, flags in zip(row["values"], row["cell_flags"]):
                 raw = "(blank)" if value is None else str(value)
                 label = "; ".join(ISSUE_LABELS[flag] for flag in flags)
                 td_class = f' class="{escape(flags[0], quote=True)}"' if flags else ""
                 title = f' title="{escape(label, quote=True)}"' if label else ""
-                output.append(f"<td{td_class}{title}>{escape(raw)}")
+                parts.append(f"<td{td_class}{title}>{escape(raw)}")
                 if label:
-                    output.append(f'<small class="flagged-note">{escape(label)}</small>')
-                output.append("</td>")
-            output.append("</tr>")
-        yield "".join(output)
+                    parts.append(f'<small class="flagged-note">{escape(label)}</small>')
+                parts.append("</td>")
+            parts.append("</tr>")
+        yield "".join(parts)
+    yield "</tbody></table></div></section>"
 
-    yield "</tbody></table></div></section>\n</body>" + closing
+
+def full_html_chunks(profile, df, workbook=None, dropdown_masks=None):
+    """Backward-compatible single-sheet full HTML export."""
+    opening, closing = _open_html(profile)
+    yield opening
+    yield from _grid_chunks(df, workbook, dropdown_masks)
+    yield "\n</body>" + closing
+
+
+def full_workbook_html_chunks(profiles, frames, reviews, vba_audit=None):
+    """Stream every worksheet of a workbook in Excel tab order."""
+    first = next(iter(profiles))
+    opening, closing = _open_html(profiles[first])
+    yield opening
+    yield "<h2>Workbook overview — all worksheets</h2>"
+    yield (
+        "<p>This export covers all analyzed worksheets, including hidden "
+        "worksheets; they may contain sensitive data. "
+        "Each table is a read-only value snapshot.</p>"
+    )
+    yield "<ul>"
+    for sheet, frame in frames.items():
+        meta = reviews[sheet]["metadata"]
+        yield (
+            "<li>" + escape(sheet) + " — "
+            + str(len(frame)) + " rows, " + str(len(frame.columns)) + " columns"
+            + "; visibility: " + escape(str(meta["worksheet_visibility"])) + "</li>"
+        )
+    yield "</ul>"
+    if vba_audit:
+        yield "<h2>VBA static audit (no execution)</h2>"
+        yield "<p>Scan status: " + escape(vba_audit["source_scan_status"]) + "</p>"
+        yield "<p>" + escape(vba_audit["limitations"]) + "</p>"
+        for module in vba_audit["modules"]:
+            yield ("<p>Module: " + escape(module["name"]) + " ("
+                   + str(module["source_lines"]) + " source lines)</p>")
+        for finding in vba_audit["findings"]:
+            yield (
+                "<p>[" + escape(finding["category"]) + "] "
+                + escape(finding["keyword"]) + " — "
+                + escape(finding["explanation"]) + "</p>"
+            )
+    for sheet, frame in frames.items():
+        review = reviews[sheet]
+        yield from _grid_chunks(
+            frame,
+            workbook=review["metadata"],
+            dropdown_masks=review["masks"],
+            sheet_name=sheet,
+        )
+    yield "\n</body>" + closing
