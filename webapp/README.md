@@ -86,6 +86,18 @@ line breaks may not match text-editor physical line numbers. In the live
 grid, displayed cell values are truncated at 500 characters; the **full HTML
 export does not truncate values**. Source files are never modified.
 
+## Optional Excel-native runner on Windows
+
+If Excel for Windows is installed, see [NATIVE_EXCEL.md](NATIVE_EXCEL.md)
+for an independent, supervised CLI tool that opens a copy, uses real Excel to
+recalculate formulas, compares stored values, and creates JSON/HTML audit
+reports. There is also an **explicitly approved named-macro test mode**, but
+this executes VBA with the user's full Windows privileges and **does not
+sandbox its side effects**. It is never triggered by CSV/XLSX/XLSM browser
+upload. The native Excel engine has mocked-COM automated tests and a Windows
+installation test in CI; actual operation with Microsoft Excel on a user's
+machine still requires an independent trial.
+
 ## Current preview restrictions
 
 - CSV, XLSX and XLSM uploads; inspect up to 40 worksheets and at most 100,000 data rows total and 200 columns on any one sheet.
