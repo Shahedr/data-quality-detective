@@ -1,12 +1,12 @@
 from pathlib import Path
 
-import pandas as pd
-
 from dqdetect.checks import (
     invalid_date_count,
     iqr_outlier_count,
     mixed_numeric_text_count,
 )
+from dqdetect.schema import validate_schema
+from dqdetect.types import dtype_label
 
 
 def _sample_values(series, limit=3):
@@ -14,7 +14,13 @@ def _sample_values(series, limit=3):
     return [value[:60] for value in values]
 
 
-def profile_dataframe(df, source_name="dataset"):
+def profile_dataframe(
+    df,
+    source_name="dataset",
+    iqr_multiplier=1.5,
+    min_outlier_sample_size=4,
+    schema_rules=None,
+):
     row_count, column_count = df.shape
     duplicate_rows = int(df.duplicated().sum())
 
@@ -26,7 +32,11 @@ def profile_dataframe(df, source_name="dataset"):
         unique_count = int(series.nunique(dropna=True))
         mixed_count = mixed_numeric_text_count(series)
         invalid_dates = invalid_date_count(series, column)
-        outliers = iqr_outlier_count(series)
+        outliers = iqr_outlier_count(
+            series,
+            multiplier=iqr_multiplier,
+            min_sample_size=min_outlier_sample_size,
+        )
         is_constant = unique_count <= 1
 
         issues = []
@@ -44,7 +54,7 @@ def profile_dataframe(df, source_name="dataset"):
         columns.append(
             {
                 "column": str(column),
-                "dtype": str(series.dtype),
+                "dtype": dtype_label(series),
                 "missing_count": missing_count,
                 "missing_pct": round(
                     (missing_count / row_count * 100) if row_count else 0.0,
@@ -80,7 +90,37 @@ def profile_dataframe(df, source_name="dataset"):
         ),
     }
 
-    return {
+    profile = {
         "summary": summary,
+        "settings": {
+            "iqr_multiplier": iqr_multiplier,
+            "min_outlier_sample_size": min_outlier_sample_size,
+        },
         "columns": columns,
     }
+
+    if schema_rules is not None:
+        profile["schema_validation"] = validate_schema(df, schema_rules)
+
+    return profile
+
+
+def profile_has_issues(profile):
+    summary = profile["summary"]
+    summary_issue_keys = (
+        "duplicate_rows",
+        "columns_with_missing",
+        "constant_columns",
+        "mixed_numeric_text_columns",
+        "date_columns_with_invalid_values",
+        "numeric_columns_with_outliers",
+    )
+
+    if any(summary[key] > 0 for key in summary_issue_keys):
+        return True
+
+    schema_validation = profile.get("schema_validation")
+    if schema_validation is not None and not schema_validation["valid"]:
+        return True
+
+    return False

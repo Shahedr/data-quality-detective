@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T03:30:00+00:00",
+  "generated_at": "2026-10-17T05:45:00+00:00",
   "summary": {
     "source": "messy_orders.csv",
     "rows": 12,
@@ -11,10 +11,14 @@
     "date_columns_with_invalid_values": 1,
     "numeric_columns_with_outliers": 2
   },
+  "settings": {
+    "iqr_multiplier": 1.5,
+    "min_outlier_sample_size": 4
+  },
   "columns": [
     {
       "column": "order_id",
-      "dtype": "int64",
+      "dtype": "integer",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 11,
@@ -22,12 +26,16 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 0,
-      "sample_values": ["1", "2", "3"],
+      "sample_values": [
+        "1",
+        "2",
+        "3"
+      ],
       "issues": []
     },
     {
       "column": "order_date",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 11,
@@ -35,12 +43,18 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 1,
       "outlier_count": 0,
-      "sample_values": ["2025-01-03", "2025-01-04", "2025-01-05"],
-      "issues": ["invalid date values"]
+      "sample_values": [
+        "2025-01-03",
+        "2025-01-04",
+        "2025-01-05"
+      ],
+      "issues": [
+        "invalid date values"
+      ]
     },
     {
       "column": "customer_id",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 1,
       "missing_pct": 8.33,
       "unique_count": 10,
@@ -48,12 +62,18 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 0,
-      "sample_values": ["C001", "C002", "C003"],
-      "issues": ["missing values"]
+      "sample_values": [
+        "C001",
+        "C002",
+        "C003"
+      ],
+      "issues": [
+        "missing values"
+      ]
     },
     {
       "column": "region",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 4,
@@ -61,12 +81,16 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 0,
-      "sample_values": ["Midwest", "South", "West"],
+      "sample_values": [
+        "Midwest",
+        "South",
+        "West"
+      ],
       "issues": []
     },
     {
       "column": "quantity",
-      "dtype": "int64",
+      "dtype": "integer",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 4,
@@ -74,12 +98,18 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 1,
-      "sample_values": ["1", "2", "3"],
-      "issues": ["potential outliers"]
+      "sample_values": [
+        "1",
+        "2",
+        "3"
+      ],
+      "issues": [
+        "potential outliers"
+      ]
     },
     {
       "column": "unit_price",
-      "dtype": "float64",
+      "dtype": "float",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 10,
@@ -87,12 +117,18 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 3,
-      "sample_values": ["39.99", "24.5", "19.0"],
-      "issues": ["potential outliers"]
+      "sample_values": [
+        "39.99",
+        "24.5",
+        "19.0"
+      ],
+      "issues": [
+        "potential outliers"
+      ]
     },
     {
       "column": "freight_cost",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 1,
       "missing_pct": 8.33,
       "unique_count": 9,
@@ -100,12 +136,19 @@
       "mixed_numeric_text_count": 1,
       "invalid_date_count": 0,
       "outlier_count": 0,
-      "sample_values": ["12.50", "Included", "8.75"],
-      "issues": ["missing values", "mixed numeric/text"]
+      "sample_values": [
+        "12.50",
+        "Included",
+        "8.75"
+      ],
+      "issues": [
+        "missing values",
+        "mixed numeric/text"
+      ]
     },
     {
       "column": "status",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 3,
@@ -113,7 +156,11 @@
       "mixed_numeric_text_count": 0,
       "invalid_date_count": 0,
       "outlier_count": 0,
-      "sample_values": ["Shipped", "Delivered", "Returned"],
+      "sample_values": [
+        "Shipped",
+        "Delivered",
+        "Returned"
+      ],
       "issues": []
     }
   ],

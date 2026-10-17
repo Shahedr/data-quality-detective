@@ -2,14 +2,35 @@
 
 All notable changes to Data Quality Detective are documented here.
 
-## Unreleased
+## [1.0.0] - 2026-10-17
+
+This release completes the planned feature scope for the project.
 
 ### Added
 
-- machine-readable JSON report output for scripts and CI workflows
-- `--format json` for JSON-only output
+- machine-readable JSON report output with `--format json`
 - `--format all` for Markdown, HTML, and JSON in one run
+- configurable IQR multiplier and minimum outlier sample size
+- JSON schema rules for required columns and broad expected data types
+- comparison between current and previous CSV/Excel datasets
+- optional SQLAlchemy database-table profiling with PostgreSQL support
+- richer HTML issue overview
+- `--fail-on-issues` for CI/data-quality gates
+- reusable composite GitHub Action
+- PostgreSQL integration coverage in CI
+- GitHub Action smoke testing in CI
 
+### Changed
+
+- report payloads now include analysis settings
+- column dtypes now use stable semantic labels across supported pandas versions
+- Markdown and HTML reports can include schema and comparison results
+- package maturity moved from alpha to beta
+- CLI input handling now supports either a file or database table
+
+### Design
+
+The project remains a first-pass profiler. It flags suspicious data and schema mismatches without automatically changing source values.
 
 ## [0.1.0] - 2026-10-06
 

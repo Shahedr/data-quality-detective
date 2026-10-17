@@ -49,12 +49,18 @@ def invalid_date_count(series, column_name):
     return int(parsed.isna().sum())
 
 
-def iqr_outlier_count(series):
+def iqr_outlier_count(series, multiplier=1.5, min_sample_size=4):
+    if multiplier <= 0:
+        raise ValueError("IQR multiplier must be greater than 0")
+
+    if min_sample_size < 1:
+        raise ValueError("Minimum outlier sample size must be at least 1")
+
     if not is_numeric_dtype(series):
         return 0
 
     values = series.dropna()
-    if len(values) < 4:
+    if len(values) < min_sample_size:
         return 0
 
     q1 = values.quantile(0.25, interpolation="linear")
@@ -64,6 +70,6 @@ def iqr_outlier_count(series):
     if pd.isna(iqr) or iqr == 0:
         return 0
 
-    lower = q1 - 1.5 * iqr
-    upper = q3 + 1.5 * iqr
+    lower = q1 - multiplier * iqr
+    upper = q3 + multiplier * iqr
     return int(((values < lower) | (values > upper)).sum())

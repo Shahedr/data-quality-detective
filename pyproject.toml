@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dqdetect"
-version = "0.1.0"
-description = "Command-line data quality profiler for CSV and Excel files"
+version = "1.0.0"
+description = "Command-line data quality profiler for files and database tables"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -18,11 +18,13 @@ keywords = [
   "data-profiling",
   "csv",
   "excel",
+  "postgresql",
   "analytics",
-  "pandas"
+  "pandas",
+  "cli"
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -39,9 +41,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+database = [
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.1"
+]
 dev = [
   "build>=1.2",
   "pytest>=8.0",
+  "sqlalchemy>=2.0",
   "twine>=6.0"
 ]
 
@@ -52,6 +59,7 @@ dqdetect = "dqdetect.cli:main"
 Homepage = "https://github.com/Shahedr/data-quality-detective"
 Repository = "https://github.com/Shahedr/data-quality-detective"
 Issues = "https://github.com/Shahedr/data-quality-detective/issues"
+Changelog = "https://github.com/Shahedr/data-quality-detective/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["dqdetect*"]

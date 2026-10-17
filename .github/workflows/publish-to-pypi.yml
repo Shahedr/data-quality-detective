@@ -1,59 +1,94 @@
 name: Publish package to PyPI
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git tag to publish, for example v0.1.0"
+        description: "Branch, tag, or commit to release"
         required: true
-        default: "v0.1.0"
-  release:
-    types: [published]
+        default: "main"
 
 jobs:
   build:
-    name: Build distribution
+    name: Verify and build release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'Release v')
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish_needed: ${{ steps.pypi.outputs.publish_needed }}
 
     steps:
-      - name: Resolve release ref
-        id: release_ref
-        shell: bash
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
-            echo "ref=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Check out release tag
+      - name: Check out release source
         uses: actions/checkout@v5
         with:
-          ref: ${{ steps.release_ref.outputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Install build tools
-        run: python -m pip install --upgrade build twine
-
-      - name: Verify tag matches package version
+      - name: Read and verify version
+        id: version
         shell: bash
         run: |
-          TAG="${{ steps.release_ref.outputs.ref }}"
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          if [ "$TAG" != "v$VERSION" ]; then
-            echo "Tag $TAG does not match pyproject version $VERSION"
+          INIT_VERSION=$(python -c "from dqdetect import __version__; print(__version__)")
+          if [ "$VERSION" != "$INIT_VERSION" ]; then
+            echo "pyproject.toml version $VERSION does not match dqdetect.__version__ $INIT_VERSION"
             exit 1
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release commit title
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          EXPECTED="Release v${{ steps.version.outputs.version }}"
+          ACTUAL="${{ github.event.head_commit.message }}"
+          case "$ACTUAL" in
+            "$EXPECTED"*) ;;
+            *)
+              echo "Release commit must start with: $EXPECTED"
+              exit 1
+              ;;
+          esac
+
+      - name: Install release dependencies
+        run: python -m pip install --upgrade build twine pytest sqlalchemy
+
+      - name: Run unit and integration-safe tests
+        run: python -m pip install -e ".[dev,database]" && pytest -q
 
       - name: Build package
         run: python -m build
 
-      - name: Check package metadata
+      - name: Validate package metadata
         run: python -m twine check dist/*
+
+      - name: Check whether version already exists on PyPI
+        id: pypi
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/dqdetect/$VERSION/json")
+          case "$STATUS" in
+            200)
+              echo "publish_needed=false" >> "$GITHUB_OUTPUT"
+              echo "dqdetect $VERSION already exists on PyPI; publish step will be skipped."
+              ;;
+            404)
+              echo "publish_needed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unexpected PyPI response: HTTP $STATUS"
+              exit 1
+              ;;
+          esac
 
       - name: Upload distribution artifact
         uses: actions/upload-artifact@v4
@@ -65,6 +100,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
+    if: needs.build.outputs.publish_needed == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -81,3 +117,42 @@ jobs:
 
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  release:
+    name: Create GitHub release
+    needs: [build, publish]
+    if: >-
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+
+      - name: Resolve release target
+        id: target
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create release if needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        shell: bash
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already has a GitHub release."
+            exit 0
+          fi
+
+          gh release create "$TAG" \
+            --target "${{ steps.target.outputs.sha }}" \
+            --title "Data Quality Detective $TAG" \
+            --notes-file RELEASE_NOTES.md
