@@ -1,0 +1,43 @@
+import os
+
+import pandas as pd
+import pytest
+from sqlalchemy import create_engine, text
+
+from dqdetect.database import load_database_table
+
+
+DATABASE_URL = os.getenv("DQDETECT_TEST_POSTGRES_URL")
+
+pytestmark = pytest.mark.skipif(
+    not DATABASE_URL,
+    reason="PostgreSQL integration URL not configured",
+)
+
+
+def test_load_postgresql_table():
+    engine = create_engine(DATABASE_URL)
+
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS dqdetect_orders"))
+
+    pd.DataFrame(
+        {
+            "id": [1, 2],
+            "amount": [10.5, 20.0],
+        }
+    ).to_sql(
+        "dqdetect_orders",
+        engine,
+        index=False,
+    )
+    engine.dispose()
+
+    df = load_database_table(
+        DATABASE_URL,
+        "dqdetect_orders",
+        schema="public",
+    )
+
+    assert df["id"].tolist() == [1, 2]
+    assert df["amount"].tolist() == [10.5, 20.0]
