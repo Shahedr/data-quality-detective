@@ -1,8 +1,7 @@
-# Data Quality Report — Sample Output
+# Data Quality Report
 
 **Source:** messy_orders.csv
-
-This committed snapshot shows the default v1.0 profiling result for the sample dataset.
+**Generated:** 2026-10-17 05:45 UTC
 
 ## Dataset summary
 
