@@ -69,7 +69,9 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 .key-mixed{background:#edf0ff;color:#4556a1}
 .key-outlier{background:#ffeffa;color:#9c3975}
 .key-dropdown_invalid{background:#f5eaff;color:#7731a0}
+.key-formula_ref{background:#fee9e4;color:#aa3628}
 .sheet-cell.cell-dropdown_invalid{background:#f5eaff}
+.sheet-cell.cell-formula_ref{background:#fee9e4}
 .workbook-notice{padding:18px 22px;margin-top:16px;background:#f7f9ff}
 .workbook-switch{padding:18px 22px;margin-bottom:16px}
 .switch-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;font-weight:700}
@@ -186,6 +188,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
             <option value="mixed">Mixed numeric/text</option>
             <option value="outlier">Potential outliers</option>
             <option value="dropdown_invalid">Invalid dropdown choices</option>
+            <option value="formula_ref">Broken formula references</option>
           </select>
         </div>
       </div>
@@ -196,6 +199,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         <span class="key-mixed">Mixed numeric/text</span>
         <span class="key-outlier">Potential outlier</span>
         <span class="key-dropdown_invalid">Invalid dropdown choice</span>
+        <span class="key-formula_ref">Broken formula</span>
       </div>
       <div class="grid-scroll" id="gridViewport" role="region" aria-label="Scrollable complete spreadsheet" tabindex="0">
         <div class="grid-canvas" id="gridCanvas" role="grid" aria-label="Uploaded spreadsheet data">
