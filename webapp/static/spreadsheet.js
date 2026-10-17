@@ -211,7 +211,12 @@
       content.append(empty);
     }
     layer.replaceChildren(content);
-    updateStatus(start, end);
+    // The status refers to visible rows, not the extra overscan buffer.
+    const firstVisible = Math.min(state.count,
+      Math.max(0, Math.floor(Math.max(0, scrollTop - HEADER_HEIGHT) / ROW_HEIGHT)));
+    const lastVisible = Math.min(state.count,
+      Math.ceil((scrollTop + view.clientHeight - HEADER_HEIGHT) / ROW_HEIGHT));
+    updateStatus(firstVisible, Math.max(firstVisible, lastVisible));
     // Prefetch nearby pages to reduce visible loading gaps on ordinary scrolling.
     if (end > start) {
       const ahead = Math.floor(end / PAGE_SIZE) + 1;
