@@ -9,11 +9,12 @@ import json
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 from dqdetect.profiler import profile_dataframe
 from dqdetect.report import render_html, render_json
+from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_ROWS = 100_000
@@ -49,8 +50,8 @@ def health():
     return {"status": "ok", "product": "Data Quality Detective", "stage": "preview"}
 
 
-def analyze_bytes(name: str, data: bytes) -> dict:
-    """Profile an uploaded file. Does not write source files or reports to a database."""
+def _read_dataset(name: str, data: bytes):
+    """Parse and enforce the local preview limits without saving user datasets."""
     suffix = Path(name).suffix.lower()
     if suffix not in {".csv", ".xlsx"}:
         raise HTTPException(
@@ -77,7 +78,6 @@ def analyze_bytes(name: str, data: bytes) -> dict:
             detail="Could not read this dataset. Check its format and encoding.",
         ) from exc
     except Exception as exc:
-        # Do not expose parser errors, file paths, or internal stack traces to clients.
         raise HTTPException(
             status_code=422, detail="Unable to parse the uploaded dataset."
         ) from exc
@@ -88,7 +88,12 @@ def analyze_bytes(name: str, data: bytes) -> dict:
             detail="Prototype limit: 100,000 rows and 200 columns. "
             "The standalone CLI has no fixed row-count limit.",
         )
+    return df
 
+
+def analyze_bytes(name: str, data: bytes) -> dict:
+    """Generate dashboard, actual flagged rows, and downloadable annotated report."""
+    df = _read_dataset(name, data)
     try:
         profile = profile_dataframe(df, source_name=Path(name).name)
         report_json = json.loads(render_json(profile))
@@ -97,12 +102,24 @@ def analyze_bytes(name: str, data: bytes) -> dict:
             "columns": profile["columns"],
             "recommendations": report_json["recommendations"],
             "report_json": report_json,
-            "report_html": render_html(profile),
+            "report_html": append_annotated_excerpt(render_html(profile), df),
+            "spreadsheet": inspect_dataframe(df),
         }
     except (ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=422, detail="Could not profile this dataset."
         ) from exc
+
+
+def inspect_bytes(name: str, data: bytes, page=1, issue="all") -> dict:
+    """Stateless paging: reloads the selected file each request, no server cache."""
+    if issue not in ISSUE_FILTERS or page < 1:
+        raise HTTPException(status_code=422, detail="Invalid page or issue filter.")
+    df = _read_dataset(name, data)
+    try:
+        return inspect_dataframe(df, page=page, issue=issue)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/analyze")
@@ -115,3 +132,20 @@ async def analyze(file: UploadFile = File(...)):
     finally:
         await file.close()
     return JSONResponse(analyze_bytes(filename, data))
+
+
+@app.post("/api/rows")
+async def inspect_rows(
+    file: UploadFile = File(...),
+    page: int = Form(1),
+    issue: str = Form("all"),
+):
+    """Returns one grid page; the browser re-sends its local file for each page."""
+    filename = Path(file.filename or "").name
+    if not filename:
+        raise HTTPException(status_code=400, detail="Choose a file to inspect.")
+    try:
+        data = await file.read(MAX_FILE_BYTES + 1)
+    finally:
+        await file.close()
+    return JSONResponse(inspect_bytes(filename, data, page=page, issue=issue))
