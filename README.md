@@ -12,8 +12,12 @@ A lightweight Python CLI for the first pass through a new dataset.
 ## Browser preview (development only)
 
 An optional local browser interface is available in [webapp/](webapp/README.md).
-It supports drag-and-drop CSV and Excel upload, the same diagnostic profiling
-engine, a visual issue dashboard, and downloadable HTML/JSON reports.
+It supports drag-and-drop CSV, Excel XLSX and macro-enabled XLSM upload, the
+same diagnostic profiling engine, an annotated full-spreadsheet scrollable viewer,
+and complete downloadable HTML/JSON reports. XLSM files are analyzed as cell data:
+macros are never executed, and supported ordinary dropdown lists can be checked.
+See the [web-app limitations](webapp/README.md) for unsupported dynamic Excel
+features and commercial deployment requirements.
 
 Install and run locally:
 
