@@ -1,6 +1,6 @@
 import pandas as pd
 
-from dqdetect.profiler import profile_dataframe
+from dqdetect.profiler import profile_dataframe, profile_has_issues
 
 
 def test_profile_flags_common_issues():
@@ -20,6 +20,7 @@ def test_profile_flags_common_issues():
     assert summary["mixed_numeric_text_columns"] == 1
     assert summary["date_columns_with_invalid_values"] == 1
     assert summary["numeric_columns_with_outliers"] == 1
+    assert profile_has_issues(profile) is True
 
 
 def test_duplicate_rows_are_counted():
@@ -59,3 +60,18 @@ def test_iqr_rule_is_stable_for_sample_values():
     column = profile["columns"][0]
 
     assert column["outlier_count"] == 3
+    assert profile["settings"]["iqr_multiplier"] == 1.5
+
+
+def test_schema_result_is_attached_to_profile():
+    df = pd.DataFrame({"id": [1, 2]})
+    rules = {
+        "required_columns": ["id", "missing"],
+        "column_types": {"id": "numeric"},
+        "allow_extra_columns": True,
+    }
+
+    profile = profile_dataframe(df, schema_rules=rules)
+
+    assert profile["schema_validation"]["valid"] is False
+    assert profile["schema_validation"]["missing_required_columns"] == ["missing"]
