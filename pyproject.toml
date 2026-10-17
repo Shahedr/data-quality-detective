@@ -50,6 +50,9 @@ web = [
   "uvicorn>=0.30",
   "python-multipart>=0.0.9"
 ]
+macro-audit = [
+  "oletools>=0.60.2"
+]
 dev = [
   "build>=1.2",
   "pytest>=8.0",

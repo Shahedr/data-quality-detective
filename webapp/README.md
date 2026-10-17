@@ -13,7 +13,7 @@ python -m uvicorn webapp.app:app --host 127.0.0.1 --port 8000
 
 Open **http://127.0.0.1:8000** and select **Try example data** or upload a CSV/XLSX/XLSM file.
 
-The browser requests `POST /api/analyze` and displays the real Python profiler results. It can download **JSON** and a standalone **full-spreadsheet HTML** report; there is no mock analysis.
+The browser requests `POST /api/analyze` and displays the real Python profiler results. For Excel workbooks, you can switch among worksheets and review aggregate sheet counts. It can download **JSON** and a standalone **full-spreadsheet HTML** report; there is no mock analysis.
 
 ## Inspect the actual data
 
@@ -44,7 +44,7 @@ does not imply an unlimited file size.
 
 **Download full HTML spreadsheet** sends the source to a dedicated local
 export endpoint and streams the summary plus **every accepted spreadsheet
-data row and column** with the actual flagged cells and duplicate groups.
+data row and column** across **every accepted worksheet** with the actual flagged cells and duplicate groups.
 The exported HTML is a single read-only standalone file with scrollable
 tables and requires no server to open. It does not recreate Excel formatting,
 formulas, macros, filters, or functional dropdown controls. In very large or
@@ -65,11 +65,21 @@ explicitly identifies unsupported list rules. Dropdown options are inspected,
 not recreated as usable controls in HTML. Macro presence is reported, but
 macro behavior itself is not analyzed, run, tested, or preserved in exports.
 
+A selected-sheet dashboard now includes a **workbook overview** with each worksheet's name, row count, duplicate count, formula count, and selected issue counts. Hidden worksheets are included in the full HTML export and marked as hidden; exports can therefore include data you did not expect. The workbook auditor also inventories Excel tables and reports clearly broken `#REF!` references in formulas. Standard dropdown option values are visible as read-only diagnostic text.
+
+**VBA static source audit:** Optional package `oletools` enables macro source extraction, module inventory, and auto-execution/suspicious keyword triage. Install it from the repo root on the computer running the app:
+
+```powershell
+python -m pip install -e ".[web,macro-audit]"
+```
+
+The VBA scanner does **not execute, compile, debug, or prove a macro's correctness or safety**. Scanners can miss malicious or broken code. If the scanner is missing or parsing fails, the dashboard reports this plainly. Real execution requires a separate, explicitly approved and isolated Microsoft Excel for Windows environment; the upload endpoint **never executes macros**. An Excel-native test runner, full formula recalculation, workbook editing, ActiveX/control simulation, and complete VBA execution compatibility are **not included in this preview**.
+
 Excel formulas are **not evaluated or refreshed**: the analyzer reads cached
 values when they exist; formula cells with missing or stale caches may appear
-blank or outdated. Excel structured tables are treated as ordinary cells on
-the first worksheet; arbitrary multi-sheet layouts and database-like named
-list objects are not automatically normalized.
+blank or outdated. Excel structured tables are inventoried and treated as ordinary cells;
+complex relationships across worksheets, custom workbook-defined names,
+external connections, and database-like named list objects are not automatically normalized.
 
 Data row numbers start at 1 after the header, so CSV files with embedded
 line breaks may not match text-editor physical line numbers. In the live
@@ -78,8 +88,8 @@ export does not truncate values**. Source files are never modified.
 
 ## Current preview restrictions
 
-- CSV, XLSX and XLSM uploads; only the first worksheet is analyzed, not all workbook sheets.
-- Max request file size 10 MiB; max 100,000 rows and 200 columns.
+- CSV, XLSX and XLSM uploads; inspect up to 40 worksheets and at most 100,000 data rows total and 200 columns on any one sheet.
+- Max upload file size 10 MiB; max 100,000 data rows **across all worksheets**, max 200 columns per worksheet, 40 worksheet limit. An expanded Excel ZIP archive may not exceed 250 MiB / 2,000 members.
 - Current backend loads files into memory; these limits **do not** guarantee safe memory use for compressed XLSX files.
 - No sign-in, subscriptions, payments, rate limiting, job queue, audit logs, tenant isolation, or data retention/privacy policy.
 - Uploaded bytes are processed by the application, with no intentional database persistence. The web framework may temporarily spool multipart bytes to disk.

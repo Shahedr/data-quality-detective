@@ -13,9 +13,10 @@ A lightweight Python CLI for the first pass through a new dataset.
 
 An optional local browser interface is available in [webapp/](webapp/README.md).
 It supports drag-and-drop CSV, Excel XLSX and macro-enabled XLSM upload, the
-same diagnostic profiling engine, an annotated full-spreadsheet scrollable viewer,
-and complete downloadable HTML/JSON reports. XLSM files are analyzed as cell data:
-macros are never executed, and supported ordinary dropdown lists can be checked.
+same diagnostic profiling engine, multi-worksheet navigation, an annotated
+scrollable data grid, and an all-worksheet downloadable HTML report. XLSM files
+are analyzed as cell data: VBA is never executed, supported list validations
+can be checked, and an optional `oletools` extra adds static VBA source triage.
 See the [web-app limitations](webapp/README.md) for unsupported dynamic Excel
 features and commercial deployment requirements.
 
@@ -32,7 +33,8 @@ Open http://127.0.0.1:8000 in your browser.
 payments, per-customer isolation, rate limiting, or verified handling of
 sensitive customer uploads. Do not publish it to the open internet without
 those safeguards. The web preview currently caps uploads at 10 MiB, 100,000
-rows, and 200 columns; the CLI does not impose those fixed limits.
+rows across all workbook sheets, 200 columns per sheet, and 40 sheets; the
+CLI does not impose those fixed limits.
 
 ## Install
 

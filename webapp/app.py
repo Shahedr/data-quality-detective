@@ -1,32 +1,31 @@
-"""Browser MVP built on the same profiling engine as the dqdetect CLI.
+"""Local browser workbook auditor built on the dqdetect profiling engine.
 
-Prototype only. Before exposing to untrusted internet traffic, add authentication,
-rate limiting, deployment-level resource limits, and an abuse/privacy review.
+Prototype only. Do not expose to the public internet without an independent
+security review, authentication, upload isolation, and resource controls.
+Never execute arbitrary Excel macros or external workbook connections.
 """
 
-import io
 import json
 import re
 from pathlib import Path
 
-import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from dqdetect.profiler import profile_dataframe
 from dqdetect.report import render_html, render_json
-from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 from webapp.excel import inspect_excel
-from webapp.export import full_html_chunks
-
-MAX_FILE_BYTES = 10 * 1024 * 1024
-MAX_ROWS = 100_000
-MAX_COLUMNS = 200
+from webapp.export import full_html_chunks, full_workbook_html_chunks
+from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
+from webapp.vba import audit_vba
+from webapp.workbook import (
+    MAX_FILE_BYTES, MAX_ROWS, MAX_COLUMNS, parse_sheets, select_sheet
+)
 
 app = FastAPI(
     title="Data Quality Detective",
-    description="Local browser preview for CSV/Excel (including macro-enabled XLSM) data profiling.",
-    version="0.1.0-preview",
+    description="Local CSV and multi-worksheet XLSX/XLSM quality auditor.",
+    version="0.2.0-preview",
     docs_url=None,
     redoc_url=None,
 )
@@ -51,8 +50,7 @@ def index():
 @app.get("/spreadsheet.js", include_in_schema=False)
 def spreadsheet_script():
     return FileResponse(
-        _ROOT / "static" / "spreadsheet.js",
-        media_type="application/javascript",
+        _ROOT / "static" / "spreadsheet.js", media_type="application/javascript"
     )
 
 
@@ -61,93 +59,105 @@ def health():
     return {"status": "ok", "product": "Data Quality Detective", "stage": "preview"}
 
 
-def _read_dataset(name: str, data: bytes):
-    """Parse and enforce the local preview limits without saving user datasets."""
-    suffix = Path(name).suffix.lower()
-    if suffix not in {".csv", ".xlsx", ".xlsm"}:
-        raise HTTPException(
-            status_code=415, detail="Supported upload formats: .csv, .xlsx and .xlsm."
-        )
-    if not data:
-        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-    if len(data) > MAX_FILE_BYTES:
-        raise HTTPException(
-            status_code=413, detail="File exceeds the 10 MB prototype upload limit."
-        )
-    if suffix in {".xlsx", ".xlsm"} and not data.startswith(b"PK"):
-        raise HTTPException(status_code=422, detail="The Excel workbook is invalid.")
-
-    try:
-        buffer = io.BytesIO(data)
-        if suffix == ".csv":
-            df = pd.read_csv(buffer)
-        else:
-            df = pd.read_excel(buffer, engine="openpyxl")
-    except (ValueError, UnicodeError, OSError, EOFError, ImportError, KeyError) as exc:
-        raise HTTPException(
-            status_code=422,
-            detail="Could not read this dataset. Check its format and encoding.",
-        ) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=422, detail="Unable to parse the uploaded dataset."
-        ) from exc
-
-    if df.shape[0] > MAX_ROWS or df.shape[1] > MAX_COLUMNS:
-        raise HTTPException(
-            status_code=413,
-            detail="Prototype limit: 100,000 rows and 200 columns. "
-            "The standalone CLI has no fixed row-count limit.",
-        )
-    review = None
+def _read_dataset(name: str, data: bytes, sheet=None, all_reviews=False):
+    """Load bounded workbook and review the selected worksheet (or all)."""
+    frames, suffix = parse_sheets(name, data)
+    selected, df = select_sheet(frames, sheet)
+    reviews = {}
     if suffix in {".xlsx", ".xlsm"}:
-        try:
-            review = inspect_excel(data, df, is_xlsm=(suffix == ".xlsm"))
-        except Exception as exc:
-            raise HTTPException(
-                status_code=422,
-                detail="Unable to inspect Excel workbook structure or list validation rules."
-            ) from exc
-    return df, review
+        sheets_to_check = list(frames) if all_reviews else [selected]
+        for tab in sheets_to_check:
+            try:
+                reviews[tab] = inspect_excel(
+                    data, frames[tab],
+                    is_xlsm=(suffix == ".xlsm"),
+                    worksheet_name=tab,
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Unable to inspect Excel workbook or list validation rules.",
+                ) from exc
+    return df, reviews.get(selected), frames, selected, suffix, reviews
 
 
-def analyze_bytes(name: str, data: bytes) -> dict:
-    """Generate dashboard, actual flagged rows, and downloadable annotated report."""
-    df, review = _read_dataset(name, data)
-    dropdown_masks = review["masks"] if review else None
+def _workbook_macro_audit(name, data, review, suffix):
+    if suffix not in {".xlsx", ".xlsm"}:
+        return None
+    if review is None:
+        return None
+    return audit_vba(
+        name, data,
+        project_present=review["metadata"]["vba_project_present"]
+    )
+
+
+def analyze_bytes(name: str, data: bytes, sheet=None) -> dict:
+    """Build sheet-specific dashboard plus all-sheet overview and VBA triage."""
+    df, review, frames, selected, suffix, reviews = _read_dataset(
+        name, data, sheet, all_reviews=True
+    )
     try:
-        profile = profile_dataframe(df, source_name=Path(name).name)
+        profiles = {
+            tab: profile_dataframe(frame, source_name=Path(name).name)
+            for tab, frame in frames.items()
+        }
+        profile = profiles[selected]
         report_json = json.loads(render_json(profile))
+        overview = []
+        for tab, frame in frames.items():
+            metadata = reviews[tab]["metadata"] if tab in reviews else None
+            overview.append({
+                "name": tab,
+                "rows": len(frame),
+                "columns": len(frame.columns),
+                "duplicate_rows": profiles[tab]["summary"]["duplicate_rows"],
+                "columns_with_missing": profiles[tab]["summary"]["columns_with_missing"],
+                "formula_cells": metadata["formula_cells_count"] if metadata else 0,
+                "invalid_dropdown_cells": metadata["dropdown_invalid_cells"] if metadata else 0,
+                "excel_tables": metadata["excel_tables"] if metadata else 0,
+                "visibility": metadata["worksheet_visibility"] if metadata else "visible",
+            })
+        macro = _workbook_macro_audit(name, data, review, suffix)
         return {
             "summary": profile["summary"],
             "columns": profile["columns"],
             "recommendations": report_json["recommendations"],
             "report_json": report_json,
-            "report_html": append_annotated_excerpt(render_html(profile), df, dropdown_masks),
-            "spreadsheet": inspect_dataframe(df, dropdown_masks=dropdown_masks),
+            "report_html": append_annotated_excerpt(
+                render_html(profile), df,
+                dropdown_masks=review["masks"] if review else None,
+            ),
+            "spreadsheet": inspect_dataframe(
+                df, dropdown_masks=review["masks"] if review else None,
+            ),
             "workbook": review["metadata"] if review else None,
+            "worksheets": overview if suffix in {".xlsx", ".xlsm"} else [],
+            "selected_sheet": selected if suffix in {".xlsx", ".xlsm"} else None,
+            "workbook_total_rows": sum(len(frame) for frame in frames.values()),
+            "vba_audit": macro,
         }
     except (ValueError, TypeError) as exc:
-        raise HTTPException(
-            status_code=422, detail="Could not profile this dataset."
-        ) from exc
+        raise HTTPException(status_code=422, detail="Could not profile this dataset.") from exc
 
 
-def inspect_bytes(name: str, data: bytes, page=1, issue="all") -> dict:
-    """Stateless paging: reloads the selected file each request, no server cache."""
+def inspect_bytes(name: str, data: bytes, page=1, issue="all", sheet=None) -> dict:
+    """Reload the chosen sheet for stateless virtual-scrolling page access."""
     if issue not in ISSUE_FILTERS or page < 1:
         raise HTTPException(status_code=422, detail="Invalid page or issue filter.")
-    df, review = _read_dataset(name, data)
-    dropdown_masks = review["masks"] if review else None
+    df, review, _, selected, suffix, _ = _read_dataset(name, data, sheet)
     try:
-        return inspect_dataframe(df, page=page, issue=issue,
-                                 dropdown_masks=dropdown_masks)
+        result = inspect_dataframe(
+            df, page=page, issue=issue,
+            dropdown_masks=review["masks"] if review else None,
+        )
+        result["selected_sheet"] = selected if suffix in {".xlsx", ".xlsm"} else None
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
+async def _get_upload(file):
     filename = Path(file.filename or "").name
     if not filename:
         raise HTTPException(status_code=400, detail="Choose a file to analyze.")
@@ -155,7 +165,13 @@ async def analyze(file: UploadFile = File(...)):
         data = await file.read(MAX_FILE_BYTES + 1)
     finally:
         await file.close()
-    return JSONResponse(analyze_bytes(filename, data))
+    return filename, data
+
+
+@app.post("/api/analyze")
+async def analyze(file: UploadFile = File(...), sheet: str = Form("")):
+    filename, data = await _get_upload(file)
+    return JSONResponse(analyze_bytes(filename, data, sheet=sheet))
 
 
 @app.post("/api/rows")
@@ -163,46 +179,36 @@ async def inspect_rows(
     file: UploadFile = File(...),
     page: int = Form(1),
     issue: str = Form("all"),
+    sheet: str = Form(""),
 ):
-    """Returns one grid page; the browser re-sends its local file for each page."""
-    filename = Path(file.filename or "").name
-    if not filename:
-        raise HTTPException(status_code=400, detail="Choose a file to inspect.")
-    try:
-        data = await file.read(MAX_FILE_BYTES + 1)
-    finally:
-        await file.close()
-    return JSONResponse(inspect_bytes(filename, data, page=page, issue=issue))
-
+    filename, data = await _get_upload(file)
+    return JSONResponse(inspect_bytes(
+        filename, data, page=page, issue=issue, sheet=sheet
+    ))
 
 
 @app.post("/api/export/html")
 async def export_complete_html(file: UploadFile = File(...)):
-    """Return full HTML, including every spreadsheet row, as streamed chunks."""
-    filename = Path(file.filename or "").name
-    if not filename:
-        raise HTTPException(status_code=400, detail="Choose a file to export.")
+    """Stream all sheets in a standalone read-only HTML export."""
+    filename, data = await _get_upload(file)
+    df, review, frames, _, suffix, reviews = _read_dataset(
+        filename, data, all_reviews=True
+    )
     try:
-        data = await file.read(MAX_FILE_BYTES + 1)
-    finally:
-        await file.close()
-
-    df, review = _read_dataset(filename, data)
-    try:
-        profile = profile_dataframe(df, source_name=filename)
+        profiles = {
+            tab: profile_dataframe(frame, source_name=filename)
+            for tab, frame in frames.items()
+        }
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail="Could not profile this dataset.") from exc
 
-    # Set a safe ASCII Content-Disposition filename; keep the original
-    # source name only inside escaped report text.
-    safe_stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(filename).stem)[:70] or "data"
-    masks = review["masks"] if review else None
-    stream = full_html_chunks(
-        profile, df, workbook=review["metadata"] if review else None,
-        dropdown_masks=masks
-    )
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(filename).stem)[:70] or "data"
+    if suffix == ".csv":
+        stream = full_html_chunks(profiles[next(iter(frames))], df)
+    else:
+        macro = _workbook_macro_audit(filename, data, review, suffix)
+        stream = full_workbook_html_chunks(profiles, frames, reviews, macro)
     return StreamingResponse(
-        stream,
-        media_type="text/html; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{safe_stem}_full_report.html"'}
+        stream, media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{stem}_full_report.html"'},
     )

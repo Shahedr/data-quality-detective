@@ -28,6 +28,7 @@
   let state = {
     epoch: 0,
     file: null,
+    sheet: "",
     filter: "all",
     count: 0,
     totalRows: 0,
@@ -138,6 +139,7 @@
 
     const body = new FormData();
     body.append("file", file);
+    body.append("sheet", state.sheet);
     body.append("page", String(page));
     body.append("issue", selectedFilter);
 
@@ -252,6 +254,7 @@
     status.textContent = "Loading selected rows…";
     const body = new FormData();
     body.append("file", state.file);
+    body.append("sheet", state.sheet);
     body.append("issue", value);
     body.append("page", "1");
     try {
@@ -276,10 +279,11 @@
     }
   }
 
-  function start(file, snapshot, profiles) {
+  function start(file, snapshot, profiles, selectedSheet = "") {
     if (!file || !snapshot) return;
     state.epoch++;
     state.file = file;
+    state.sheet = selectedSheet || "";
     state.filter = "all";
     state.count = snapshot.total_matching_rows;
     state.totalRows = snapshot.total_rows;

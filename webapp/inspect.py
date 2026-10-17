@@ -17,10 +17,11 @@ from dqdetect.checks import is_date_like_column
 PAGE_SIZE = 50
 ISSUE_FILTERS = {
     "all", "flagged", "duplicate", "missing", "mixed", "invalid_date", "outlier",
-    "dropdown_invalid"
+    "dropdown_invalid", "formula_ref"
 }
 ISSUE_LABELS = {
     "duplicate": "Duplicate row",
+    "formula_ref": "Formula contains broken #REF! reference",
     "missing": "Missing value",
     "mixed": "Mixed numeric/text value",
     "invalid_date": "Invalid date",
@@ -90,11 +91,16 @@ def prepare_inspection(df, dropdown_masks=None):
     for idx, name in enumerate(df.columns):
         masks = _column_masks(df.iloc[:, idx], name)
         if dropdown_masks is not None and idx in dropdown_masks:
-            extra = dropdown_masks[idx]
-            if len(extra) != row_count:
-                raise ValueError("Dropdown mask length differs from dataset.")
-            if extra.any():
-                masks["dropdown_invalid"] = extra
+            additional = dropdown_masks[idx]
+            # Accept the historical array-shaped dropdown mask, plus the
+            # new per-issue mapping for formula errors and list violations.
+            extras = (additional if isinstance(additional, dict)
+                      else {"dropdown_invalid": additional})
+            for issue_name, extra in extras.items():
+                if issue_name not in row_masks or len(extra) != row_count:
+                    raise ValueError("Invalid supplemental cell issue mask.")
+                if extra.any():
+                    masks[issue_name] = extra
         column_masks.append(masks)
         for kind, mask in masks.items():
             row_masks[kind] |= mask

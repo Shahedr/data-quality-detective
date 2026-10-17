@@ -11,6 +11,7 @@ import re
 from zipfile import ZipFile
 
 import numpy as np
+import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
 
@@ -70,8 +71,8 @@ def _equivalent(actual, option):
         return False
 
 
-def inspect_excel(data: bytes, df, is_xlsm: bool):
-    """Inspect first worksheet and produce positional masks for invalid list entries."""
+def inspect_excel(data: bytes, df, is_xlsm: bool, worksheet_name=None):
+    """Inspect one chosen worksheet and validate supported dropdown lists."""
     macro_embedded = False
     with ZipFile(io.BytesIO(data)) as archive:
         macro_embedded = any(
@@ -81,11 +82,14 @@ def inspect_excel(data: bytes, df, is_xlsm: bool):
     book = load_workbook(io.BytesIO(data), read_only=False, data_only=False,
                          keep_vba=False, keep_links=False)
     try:
-        worksheet = book.worksheets[0]
-        formulas_present = any(
-            cell.data_type == "f"
-            for row in worksheet.iter_rows(min_row=2, max_row=min(worksheet.max_row, len(df) + 1))
-            for cell in row
+        worksheet = book[worksheet_name] if worksheet_name is not None else book.worksheets[0]
+        formula_cells = [
+            cell for cell in worksheet._cells.values()
+            if cell.row >= 2 and cell.data_type == "f"
+        ]
+        formulas_present = bool(formula_cells)
+        broken_formula_refs = sum(
+            "#REF!" in str(cell.value) for cell in formula_cells
         )
         validations = list(worksheet.data_validations.dataValidation) if worksheet.data_validations else []
         listed = [rule for rule in validations if rule.type == "list"]
@@ -93,8 +97,25 @@ def inspect_excel(data: bytes, df, is_xlsm: bool):
         invalid_cells = 0
         unsupported_rules = 0
         masks = {}
+        # Formula source is inspected statically: #REF! is a broken A1
+        # reference even when the workbook has no cached formula value.
+        for cell in formula_cells:
+            if (2 <= cell.row <= len(df) + 1 and
+                    1 <= cell.column <= len(df.columns) and
+                    "#REF!" in str(cell.value)):
+                formula_mask = masks.setdefault(cell.column - 1, {}).setdefault(
+                    "formula_ref", np.zeros(len(df), dtype=bool)
+                )
+                formula_mask[cell.row - 2] = True
+        rule_details = []
         for rule in listed:
             choices = _choices(rule.formula1, book, worksheet)
+            rule_details.append({
+                "ranges": str(rule.sqref)[:200],
+                "source": "supported literal/range" if choices is not None else "unchecked",
+                "allowed_values": [str(x)[:80] for x in choices[:100]] if choices else [],
+                "allowed_values_truncated": bool(choices and len(choices) > 100),
+            })
             if choices is None:
                 unsupported_rules += 1
                 continue
@@ -103,11 +124,13 @@ def inspect_excel(data: bytes, df, is_xlsm: bool):
                 left, top, right, bottom = cell_range.bounds
                 for column_index in range(max(1, left), min(right, len(df.columns)) + 1):
                     col = column_index - 1
-                    mask = masks.setdefault(col, np.zeros(len(df), dtype=bool))
+                    mask = masks.setdefault(col, {}).setdefault(
+                        "dropdown_invalid", np.zeros(len(df), dtype=bool)
+                    )
                     for excel_row in range(max(2, top), min(bottom, len(df) + 1) + 1):
                         pos = excel_row - 2
                         value = df.iat[pos, col]
-                        if value is None or bool(__import__("pandas").isna(value)):
+                        if value is None or bool(pd.isna(value)):
                             continue
                         validated_cells += 1
                         if not any(_equivalent(value, choice) for choice in choices):
@@ -125,6 +148,10 @@ def inspect_excel(data: bytes, df, is_xlsm: bool):
                 "Formula cells were detected. Data profiling uses saved/cached "
                 "values; formulas are not recalculated, so missing or stale "
                 "cached results may affect findings."
+            )
+        if broken_formula_refs:
+            warnings.append(
+                f"{broken_formula_refs} formula(s) contain an explicit #REF! reference."
             )
         if unsupported_rules:
             warnings.append(
@@ -149,6 +176,13 @@ def inspect_excel(data: bytes, df, is_xlsm: bool):
                 "dropdown_cells_checked": validated_cells,
                 "dropdown_invalid_cells": invalid_cells,
                 "formula_cells_detected": formulas_present,
+                "formula_cells_count": len(formula_cells),
+                "broken_formula_refs": broken_formula_refs,
+                "excel_tables": len(worksheet.tables),
+                "table_names": list(worksheet.tables.keys())[:60],
+                "conditional_formatting_ranges": len(worksheet.conditional_formatting),
+                "worksheet_visibility": worksheet.sheet_state,
+                "dropdown_rules_detail": rule_details[:80],
                 "warnings": warnings,
             },
         }

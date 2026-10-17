@@ -69,8 +69,18 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 .key-mixed{background:#edf0ff;color:#4556a1}
 .key-outlier{background:#ffeffa;color:#9c3975}
 .key-dropdown_invalid{background:#f5eaff;color:#7731a0}
+.key-formula_ref{background:#fee9e4;color:#aa3628}
 .sheet-cell.cell-dropdown_invalid{background:#f5eaff}
+.sheet-cell.cell-formula_ref{background:#fee9e4}
 .workbook-notice{padding:18px 22px;margin-top:16px;background:#f7f9ff}
+.workbook-switch{padding:18px 22px;margin-bottom:16px}
+.switch-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;font-weight:700}
+#sheetSelect{width:100%;max-width:500px;margin-top:10px;padding:10px;border:1px solid #cfd8ed;border-radius:8px;background:white}
+.sheet-overview{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.sheet-pill{background:#edf2fd;color:#344f87;border-radius:8px;padding:7px 9px;font-size:12px}
+.sheet-pill.active{background:#dfe9ff;border:1px solid #9bb2e3}
+.workbook-audit{padding:18px 22px;margin:16px 0}
+.audit-finding{font-size:12px;color:#55647e;padding:6px 0;border-bottom:1px solid #eef1f5}
 .workbook-notice h3{margin:0 0 8px;font-size:15px}
 .workbook-notice p{margin:7px 0;font-size:12px;line-height:1.6;color:#536581}
 .grid-scroll{position:relative;overflow:auto;height:min(68vh,650px);min-height:290px;border:1px solid #d9e0ed;border-radius:12px;overscroll-behavior:contain;background:#fff}
@@ -117,7 +127,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="drop" id="drop">
         <div class="upload-icon">↥</div>
         <strong id="fileTitle">Drag and drop a file here</strong>
-        <div class="muted">CSV or Excel (.xlsx / .xlsm) · up to 10 MB · 100,000 rows / 200 columns in this preview</div>
+        <div class="muted">CSV or Excel (.xlsx / .xlsm) · up to 10 MB · 100,000 rows total · 200 columns/sheet · 40 sheets in this preview</div>
         <div class="actions">
           <button class="primary" id="choose">Choose file</button>
           <button class="secondary" id="sample">Try example data</button>
@@ -142,6 +152,12 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         <button class="secondary" id="downloadHtml">↓ Download full HTML spreadsheet</button>
       </div>
     </div>
+    <div class="panel workbook-switch hidden" id="workbookSwitch">
+      <div class="switch-head"><label for="sheetSelect">Choose worksheet</label><span id="workbookTotals"></span></div>
+      <select id="sheetSelect" aria-label="Select Excel worksheet"></select>
+      <div id="sheetOverview" class="sheet-overview"></div>
+      <p class="notice">The metrics and highlighted grid below describe the selected worksheet. The complete HTML export includes every worksheet, including hidden tabs.</p>
+    </div>
     <div class="metric-grid">
       <div class="panel metric"><div class="metric-label">Total rows</div><div class="metric-value" id="rows">—</div><div class="metric-note">Analyzed</div></div>
       <div class="panel metric"><div class="metric-label">Columns</div><div class="metric-value" id="cols">—</div><div class="metric-note">Profiled</div></div>
@@ -154,6 +170,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
     </div>
 
     <div id="workbookNotice" class="panel workbook-notice hidden" aria-live="polite"></div>
+    <div id="macroNotice" class="panel workbook-audit hidden" aria-live="polite"></div>
     <div class="panel grid-panel" id="gridPanel">
       <div class="grid-head">
         <div>
@@ -171,6 +188,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
             <option value="mixed">Mixed numeric/text</option>
             <option value="outlier">Potential outliers</option>
             <option value="dropdown_invalid">Invalid dropdown choices</option>
+            <option value="formula_ref">Broken formula references</option>
           </select>
         </div>
       </div>
@@ -181,6 +199,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         <span class="key-mixed">Mixed numeric/text</span>
         <span class="key-outlier">Potential outlier</span>
         <span class="key-dropdown_invalid">Invalid dropdown choice</span>
+        <span class="key-formula_ref">Broken formula</span>
       </div>
       <div class="grid-scroll" id="gridViewport" role="region" aria-label="Scrollable complete spreadsheet" tabindex="0">
         <div class="grid-canvas" id="gridCanvas" role="grid" aria-label="Uploaded spreadsheet data">
@@ -228,19 +247,66 @@ function setStatus(message,isError=false){$("status").textContent=message;$("sta
 function item(tag,text,className){const el=document.createElement(tag);el.textContent=String(text);if(className)el.className=className;return el;}
 function showReport(data){
   lastReport=data;
+  const switcher=$("workbookSwitch"),select=$("sheetSelect"),overview=$("sheetOverview");
+  overview.replaceChildren();
+  select.replaceChildren();
+  const tabs=data.worksheets||[];
+  if(tabs.length){
+    switcher.classList.remove("hidden");
+    $("workbookTotals").textContent=tabs.length+" worksheets · "+data.workbook_total_rows.toLocaleString()+" data rows total";
+    for(const sheet of tabs){
+      const opt=document.createElement("option");
+      opt.value=sheet.name;opt.textContent=sheet.name+(sheet.visibility!=="visible"?" (hidden)":"");
+      select.append(opt);
+      const badge=item("span",sheet.name+" · "+sheet.rows.toLocaleString()+" rows"+
+        " · "+sheet.formula_cells+" formulas"+
+        " · "+sheet.invalid_dropdown_cells+" dropdown errors",
+        "sheet-pill"+(sheet.name===data.selected_sheet?" active":""));
+      overview.append(badge);
+    }
+    select.value=data.selected_sheet;
+  }else{switcher.classList.add("hidden");}
   const note=$("workbookNotice");
   note.replaceChildren();
   if(data.workbook){
     const w=data.workbook;
     note.classList.remove("hidden");
-    note.append(item("h3","Excel workbook compatibility"));
+    note.append(item("h3","Excel worksheet audit"));
     note.append(item("p","Worksheet: "+w.worksheet_analyzed+
+      " · visibility: "+w.worksheet_visibility+
+      " · Excel tables: "+w.excel_tables+
+      " · formulas: "+w.formula_cells_count+
+      " · broken formula references: "+w.broken_formula_refs+
       " · dropdown rules: "+w.dropdown_rules+
-      " · invalid dropdown values: "+w.dropdown_invalid_cells+
-      " · VBA executed: no"));
+      " · invalid dropdown values: "+w.dropdown_invalid_cells));
+    for(const rule of w.dropdown_rules_detail||[]){
+      const choices=rule.allowed_values.length
+        ? " · choices: "+rule.allowed_values.slice(0,12).join(", ")+(rule.allowed_values_truncated?" …":"")
+        : "";
+      note.append(item("p","List "+rule.ranges+" — "+rule.source+choices));
+    }
     for(const warning of w.warnings)note.append(item("p",warning));
   }else{note.classList.add("hidden");}
-  if(data.spreadsheet)window.DQDSpreadsheet.start(currentFile,data.spreadsheet,data.columns);
+  const macro=$("macroNotice");
+  macro.replaceChildren();
+  if(data.vba_audit&&data.vba_audit.vba_project_present){
+    const audit=data.vba_audit;
+    macro.classList.remove("hidden");
+    macro.append(item("h3","VBA static audit — no execution"));
+    macro.append(item("p","Source scan: "+audit.source_scan_status+
+      " · modules: "+audit.modules.length+
+      " · auto-run patterns: "+audit.finding_counts.autoexec+
+      " · suspicious patterns: "+audit.finding_counts.suspicious+
+      " · indicators of compromise: "+audit.finding_counts.ioc));
+    macro.append(item("p",audit.limitations));
+    for(const module of audit.modules.slice(0,25))
+      macro.append(item("div","Module: "+module.name+" · "+module.source_lines+" lines","audit-finding"));
+    for(const finding of audit.findings.slice(0,25))
+      macro.append(item("div",finding.category+": "+finding.keyword+" — "+finding.explanation,"audit-finding"));
+  }else{macro.classList.add("hidden");}
+  if(data.spreadsheet)window.DQDSpreadsheet.start(
+    currentFile,data.spreadsheet,data.columns,data.selected_sheet||""
+  );
   const s=data.summary;
   $("source").textContent="Source: "+s.source;
   for(const [id,key] of [["rows","rows"],["cols","columns"],["dupes","duplicate_rows"],["missing","columns_with_missing"]]){$(id).textContent=Number(s[key]).toLocaleString();}
@@ -268,7 +334,7 @@ function showReport(data){
   $("results").classList.remove("hidden");
 }
 
-async function analyzeFile(file){
+async function analyzeFile(file,sheet=""){
   if(running)return;
   if(!file)return;
   running=true;$("choose").disabled=true;$("sample").disabled=true;
@@ -276,7 +342,7 @@ async function analyzeFile(file){
   $("fileTitle").textContent=file.name;
   $("results").classList.add("hidden");
   window.DQDSpreadsheet.stop();
-  const body=new FormData();body.append("file",file);
+  const body=new FormData();body.append("file",file);body.append("sheet",sheet);
   try{
     const response=await fetch("/api/analyze",{method:"POST",body,cache:"no-store"});
     const payload=await response.json();
@@ -285,6 +351,7 @@ async function analyzeFile(file){
   }catch(error){setStatus(error.message||"Unable to analyze file.",true);}
   finally{running=false;$("choose").disabled=false;$("sample").disabled=false;}
 }
+$("sheetSelect").addEventListener("change",()=>{if(currentFile)analyzeFile(currentFile,$("sheetSelect").value);});
 $("choose").addEventListener("click",()=> $("upload").click());
 $("upload").addEventListener("change",e=>analyzeFile(e.target.files[0]));
 $("sample").addEventListener("click",()=>analyzeFile(new File([SAMPLE_CSV],"messy_orders.csv",{type:"text/csv"})));

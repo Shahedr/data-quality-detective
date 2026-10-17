@@ -131,7 +131,8 @@ def test_literal_and_range_excel_dropdowns_flag_actual_invalid_cells():
     html = post("orders.xlsx", data, "/api/export/html").text
     assert "Value not in supported dropdown list" in html
     assert "Full spreadsheet — all rows" in html
-    assert html.count('<td class="row-index">') == 3
+    # Three Orders rows plus one row from the Lists worksheet.
+    assert html.count('<td class="row-index">') == 4
 
 
 def test_xlsm_accepts_cell_data_without_executing_macros():
@@ -148,7 +149,8 @@ def test_xlsm_accepts_cell_data_without_executing_macros():
     full = post("macro_orders.xlsm", raw, "/api/export/html")
     assert full.status_code == 200
     assert "VBA code executed: No" in full.text
-    assert full.text.count('<td class="row-index">') == 3
+    # All worksheets are included even in macro-enabled workbooks.
+    assert full.text.count('<td class="row-index">') == 4
 
 
 def test_dynamic_list_rule_explicitly_reported_as_unchecked():
