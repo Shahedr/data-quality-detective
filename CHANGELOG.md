@@ -23,6 +23,7 @@ This release completes the planned feature scope for the project.
 ### Changed
 
 - report payloads now include analysis settings
+- column dtypes now use stable semantic labels across supported pandas versions
 - Markdown and HTML reports can include schema and comparison results
 - package maturity moved from alpha to beta
 - CLI input handling now supports either a file or database table
