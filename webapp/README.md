@@ -11,9 +11,9 @@ python -m pip install -e ".[web]"
 python -m uvicorn webapp.app:app --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000** and select **Try example data** or upload a CSV/XLSX file.
+Open **http://127.0.0.1:8000** and select **Try example data** or upload a CSV/XLSX/XLSM file.
 
-The browser requests `POST /api/analyze` and displays the real Python profiler results. It can download **JSON and HTML** reports; there is no mock analysis.
+The browser requests `POST /api/analyze` and displays the real Python profiler results. It can download **JSON** and a standalone **full-spreadsheet HTML** report; there is no mock analysis.
 
 ## Inspect the actual data
 
@@ -42,16 +42,43 @@ the backend does not keep a dataset-session cache. Large datasets can
 therefore take longer to load additional sections, and continuous scrolling
 does not imply an unlimited file size.
 
-The **downloadable HTML report remains a summary plus an annotated excerpt
-of up to 50 flagged rows**, not a full-spreadsheet HTML export. The full
-scrollable spreadsheet is currently within the live browser app.
-Row numbers start at 1 after the header, so CSV files with embedded line breaks
-may not match text-editor physical line numbers. Displayed cell values are
-truncated at 500 characters; source files are never modified.
+**Download full HTML spreadsheet** sends the source to a dedicated local
+export endpoint and streams the summary plus **every accepted spreadsheet
+data row and column** with the actual flagged cells and duplicate groups.
+The exported HTML is a single read-only standalone file with scrollable
+tables and requires no server to open. It does not recreate Excel formatting,
+formulas, macros, filters, or functional dropdown controls. In very large or
+wide datasets, browsers may be slow opening the full HTML file; the live
+virtualized viewer remains preferable for interactive exploration.
+The existing `report_html` field in the analysis API continues to contain a
+50-flagged-row preview for backward compatibility; the **Download** button
+uses the full export endpoint.
+
+For Excel files (.xlsx and .xlsm), the browser reads cell values without
+executing VBA code or saving over the workbook. In supported Excel data
+validation **literal lists** (for example "Open,Closed") and simple
+same-/other-sheet A1-range lists, values that are not among the allowed
+choices are highlighted and can be filtered under **Invalid dropdown choices**.
+Named ranges, INDIRECT/OFFSET/dynamic formula sources, data validation for
+dates/numbers, and form/ActiveX controls are not evaluated; a workbook notice
+explicitly identifies unsupported list rules. Dropdown options are inspected,
+not recreated as usable controls in HTML. Macro presence is reported, but
+macro behavior itself is not analyzed, run, tested, or preserved in exports.
+
+Excel formulas are **not evaluated or refreshed**: the analyzer reads cached
+values when they exist; formula cells with missing or stale caches may appear
+blank or outdated. Excel structured tables are treated as ordinary cells on
+the first worksheet; arbitrary multi-sheet layouts and database-like named
+list objects are not automatically normalized.
+
+Data row numbers start at 1 after the header, so CSV files with embedded
+line breaks may not match text-editor physical line numbers. In the live
+grid, displayed cell values are truncated at 500 characters; the **full HTML
+export does not truncate values**. Source files are never modified.
 
 ## Current preview restrictions
 
-- Only CSV and XLSX uploads; first Excel worksheet is analyzed.
+- CSV, XLSX and XLSM uploads; only the first worksheet is analyzed, not all workbook sheets.
 - Max request file size 10 MiB; max 100,000 rows and 200 columns.
 - Current backend loads files into memory; these limits **do not** guarantee safe memory use for compressed XLSX files.
 - No sign-in, subscriptions, payments, rate limiting, job queue, audit logs, tenant isolation, or data retention/privacy policy.

@@ -68,6 +68,11 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 .key-invalid_date{background:#fff0db;color:#975300}
 .key-mixed{background:#edf0ff;color:#4556a1}
 .key-outlier{background:#ffeffa;color:#9c3975}
+.key-dropdown_invalid{background:#f5eaff;color:#7731a0}
+.sheet-cell.cell-dropdown_invalid{background:#f5eaff}
+.workbook-notice{padding:18px 22px;margin-top:16px;background:#f7f9ff}
+.workbook-notice h3{margin:0 0 8px;font-size:15px}
+.workbook-notice p{margin:7px 0;font-size:12px;line-height:1.6;color:#536581}
 .grid-scroll{position:relative;overflow:auto;height:min(68vh,650px);min-height:290px;border:1px solid #d9e0ed;border-radius:12px;overscroll-behavior:contain;background:#fff}
 .grid-canvas{position:relative;min-width:100%;box-sizing:content-box}
 .grid-sticky-header{display:grid;position:sticky;top:0;left:0;height:48px;z-index:5;background:#eff3fa;border-bottom:1px solid #d5deee}
@@ -112,12 +117,12 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="drop" id="drop">
         <div class="upload-icon">↥</div>
         <strong id="fileTitle">Drag and drop a file here</strong>
-        <div class="muted">CSV or Excel (.xlsx) · up to 10 MB · 100,000 rows / 200 columns in this preview</div>
+        <div class="muted">CSV or Excel (.xlsx / .xlsm) · up to 10 MB · 100,000 rows / 200 columns in this preview</div>
         <div class="actions">
           <button class="primary" id="choose">Choose file</button>
           <button class="secondary" id="sample">Try example data</button>
         </div>
-        <input type="file" id="upload" accept=".csv,.xlsx" class="hidden" aria-label="Select CSV or Excel file">
+        <input type="file" id="upload" accept=".csv,.xlsx,.xlsm" class="hidden" aria-label="Select CSV or Excel file">
       </div>
     </section>
     <aside class="panel help">
@@ -134,7 +139,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div><h2>Your data quality snapshot</h2><div class="file-sub" id="source">Source</div></div>
       <div class="downloads">
         <button class="secondary" id="downloadJson">↓ Download JSON</button>
-        <button class="secondary" id="downloadHtml">↓ Download HTML report</button>
+        <button class="secondary" id="downloadHtml">↓ Download full HTML spreadsheet</button>
       </div>
     </div>
     <div class="metric-grid">
@@ -148,6 +153,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="panel rec-panel"><h3>What to review next</h3><ul id="recommendations"></ul></div>
     </div>
 
+    <div id="workbookNotice" class="panel workbook-notice hidden" aria-live="polite"></div>
     <div class="panel grid-panel" id="gridPanel">
       <div class="grid-head">
         <div>
@@ -164,6 +170,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
             <option value="invalid_date">Invalid dates</option>
             <option value="mixed">Mixed numeric/text</option>
             <option value="outlier">Potential outliers</option>
+            <option value="dropdown_invalid">Invalid dropdown choices</option>
           </select>
         </div>
       </div>
@@ -173,6 +180,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         <span class="key-invalid_date">Invalid date</span>
         <span class="key-mixed">Mixed numeric/text</span>
         <span class="key-outlier">Potential outlier</span>
+        <span class="key-dropdown_invalid">Invalid dropdown choice</span>
       </div>
       <div class="grid-scroll" id="gridViewport" role="region" aria-label="Scrollable complete spreadsheet" tabindex="0">
         <div class="grid-canvas" id="gridCanvas" role="grid" aria-label="Uploaded spreadsheet data">
@@ -220,6 +228,18 @@ function setStatus(message,isError=false){$("status").textContent=message;$("sta
 function item(tag,text,className){const el=document.createElement(tag);el.textContent=String(text);if(className)el.className=className;return el;}
 function showReport(data){
   lastReport=data;
+  const note=$("workbookNotice");
+  note.replaceChildren();
+  if(data.workbook){
+    const w=data.workbook;
+    note.classList.remove("hidden");
+    note.append(item("h3","Excel workbook compatibility"));
+    note.append(item("p","Worksheet: "+w.worksheet_analyzed+
+      " · dropdown rules: "+w.dropdown_rules+
+      " · invalid dropdown values: "+w.dropdown_invalid_cells+
+      " · VBA executed: no"));
+    for(const warning of w.warnings)note.append(item("p",warning));
+  }else{note.classList.add("hidden");}
   if(data.spreadsheet)window.DQDSpreadsheet.start(currentFile,data.spreadsheet,data.columns);
   const s=data.summary;
   $("source").textContent="Source: "+s.source;
@@ -278,7 +298,31 @@ function download(content,kind,extension){
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 $("downloadJson").addEventListener("click",()=>{if(lastReport)download(JSON.stringify(lastReport.report_json,null,2),"application/json","json");});
-$("downloadHtml").addEventListener("click",()=>{if(lastReport)download(lastReport.report_html,"text/html","html");});
+$("downloadHtml").addEventListener("click",async()=>{
+  if(!lastReport||!currentFile)return;
+  const button=$("downloadHtml");
+  button.disabled=true;
+  const previous=button.textContent;
+  button.textContent="Preparing complete spreadsheet…";
+  setStatus("Creating full HTML export. Very large sheets can take time.");
+  try{
+    const body=new FormData();body.append("file",currentFile);
+    const response=await fetch("/api/export/html",{method:"POST",body,cache:"no-store"});
+    if(!response.ok){
+      let message="Failed to export spreadsheet.";
+      try{const e=await response.json();if(e.detail)message=e.detail;}catch(_){}
+      throw Error(message);
+    }
+    const blob=await response.blob();
+    const filename=(currentFile.name||"dataset").replace(/\.(csv|xlsx|xlsm)$/i,"")+"_full_report.html";
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");link.href=url;link.download=filename;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    setStatus("Full spreadsheet HTML export downloaded.");
+  }catch(error){setStatus("HTML export failed: "+(error.message||"Unknown error"),true);}
+  finally{button.disabled=false;button.textContent=previous;}
+});
 </script>
 </body>
 </html>
