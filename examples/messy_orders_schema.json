@@ -1,0 +1,17 @@
+{
+  "required_columns": [
+    "order_id",
+    "order_date",
+    "customer_id",
+    "quantity",
+    "unit_price"
+  ],
+  "column_types": {
+    "order_id": "numeric",
+    "order_date": "date",
+    "customer_id": "text",
+    "quantity": "numeric",
+    "unit_price": "numeric"
+  },
+  "allow_extra_columns": true
+}
