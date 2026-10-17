@@ -229,7 +229,8 @@ data-quality-detective/
 │   ├── io.py
 │   ├── profiler.py
 │   ├── report.py
-│   └── schema.py
+│   ├── schema.py
+│   └── types.py
 ├── examples/
 ├── tests/
 ├── .github/workflows/
