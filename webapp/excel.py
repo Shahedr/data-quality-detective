@@ -97,6 +97,16 @@ def inspect_excel(data: bytes, df, is_xlsm: bool, worksheet_name=None):
         invalid_cells = 0
         unsupported_rules = 0
         masks = {}
+        # Formula source is inspected statically: #REF! is a broken A1
+        # reference even when the workbook has no cached formula value.
+        for cell in formula_cells:
+            if (2 <= cell.row <= len(df) + 1 and
+                    1 <= cell.column <= len(df.columns) and
+                    "#REF!" in str(cell.value)):
+                formula_mask = masks.setdefault(
+                    cell.column - 1, np.zeros(len(df), dtype=bool)
+                )
+                formula_mask[cell.row - 2] = True
         rule_details = []
         for rule in listed:
             choices = _choices(rule.formula1, book, worksheet)
