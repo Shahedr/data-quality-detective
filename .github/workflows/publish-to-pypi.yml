@@ -75,12 +75,20 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if python -c "import urllib.request; urllib.request.urlopen('https://pypi.org/pypi/dqdetect/' + '$VERSION' + '/json')" 2>/dev/null; then
-            echo "publish_needed=false" >> "$GITHUB_OUTPUT"
-            echo "dqdetect $VERSION already exists on PyPI; publish step will be skipped."
-          else
-            echo "publish_needed=true" >> "$GITHUB_OUTPUT"
-          fi
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/dqdetect/$VERSION/json")
+          case "$STATUS" in
+            200)
+              echo "publish_needed=false" >> "$GITHUB_OUTPUT"
+              echo "dqdetect $VERSION already exists on PyPI; publish step will be skipped."
+              ;;
+            404)
+              echo "publish_needed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unexpected PyPI response: HTTP $STATUS"
+              exit 1
+              ;;
+          esac
 
       - name: Upload distribution artifact
         uses: actions/upload-artifact@v4
@@ -127,6 +135,11 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
 
+      - name: Resolve release target
+        id: target
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Create release if needed
         env:
           GH_TOKEN: ${{ github.token }}
@@ -140,6 +153,6 @@ jobs:
           fi
 
           gh release create "$TAG" \
-            --target "${{ github.sha }}" \
+            --target "${{ steps.target.outputs.sha }}" \
             --title "Data Quality Detective $TAG" \
             --notes-file RELEASE_NOTES.md
