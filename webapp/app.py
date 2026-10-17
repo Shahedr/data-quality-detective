@@ -45,6 +45,14 @@ def index():
     return FileResponse(_ROOT / "static" / "index.html", media_type="text/html")
 
 
+@app.get("/spreadsheet.js", include_in_schema=False)
+def spreadsheet_script():
+    return FileResponse(
+        _ROOT / "static" / "spreadsheet.js",
+        media_type="application/javascript",
+    )
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "product": "Data Quality Detective", "stage": "preview"}
