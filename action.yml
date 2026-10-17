@@ -1,0 +1,66 @@
+name: Data Quality Detective
+description: Profile a CSV or Excel file for common data-quality issues
+author: Shahed
+
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  file:
+    description: Path to the CSV or Excel file to profile
+    required: true
+  format:
+    description: Report format: md, html, json, both, or all
+    required: false
+    default: json
+  output:
+    description: Directory for generated reports
+    required: false
+    default: dqdetect-reports
+  schema:
+    description: Optional path to a dqdetect JSON schema-rules file
+    required: false
+    default: ""
+  iqr-multiplier:
+    description: IQR outlier multiplier
+    required: false
+    default: "1.5"
+  fail-on-issues:
+    description: Return a failing exit code when dqdetect finds issues
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Data Quality Detective
+      shell: bash
+      run: python -m pip install "${{ github.action_path }}"
+
+    - name: Profile dataset
+      shell: bash
+      env:
+        DQD_FILE: ${{ inputs.file }}
+        DQD_FORMAT: ${{ inputs.format }}
+        DQD_OUTPUT: ${{ inputs.output }}
+        DQD_SCHEMA: ${{ inputs.schema }}
+        DQD_IQR_MULTIPLIER: ${{ inputs.iqr-multiplier }}
+        DQD_FAIL_ON_ISSUES: ${{ inputs.fail-on-issues }}
+      run: |
+        args=(
+          "$DQD_FILE"
+          "--format" "$DQD_FORMAT"
+          "--output" "$DQD_OUTPUT"
+          "--iqr-multiplier" "$DQD_IQR_MULTIPLIER"
+        )
+
+        if [ -n "$DQD_SCHEMA" ]; then
+          args+=("--schema" "$DQD_SCHEMA")
+        fi
+
+        if [ "$DQD_FAIL_ON_ISSUES" = "true" ]; then
+          args+=("--fail-on-issues")
+        fi
+
+        dqdetect "${args[@]}"
