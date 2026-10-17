@@ -116,7 +116,6 @@ def test_recalculate_native_uses_macro_disabled_excel_on_copy(tmp_path):
     assert excel.recalculated is True
     assert excel.macro is None
     assert excel.Workbooks.kwargs[0]["UpdateLinks"] == 0
-    assert excel.Workbooks.Workbooks if False else True  # no external Excel process
     assert excel.Workbooks.workbook.save_called is True
     assert excel.Workbooks.workbook.closed is True
     assert excel.quitted is True
