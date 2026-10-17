@@ -25,6 +25,7 @@ _STYLES = """
 .full-grid td.mixed{background:#edf0ff}
 .full-grid td.outlier{background:#ffeffa}
 .full-grid td.dropdown_invalid{background:#f5eaff}
+.full-grid td.formula_ref{background:#fee9e4}
 .flagged-note{display:block;font-size:.72rem;font-weight:700;margin-top:4px}
 .export-note{font-size:.85rem;color:#576781}
 .export-meta{padding:12px 16px;border-left:4px solid #718bbf;background:#f2f6ff}
