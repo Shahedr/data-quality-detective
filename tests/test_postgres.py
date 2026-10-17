@@ -16,7 +16,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_load_postgresql_table():
+@pytest.fixture()
+def postgres_table():
     engine = create_engine(DATABASE_URL)
 
     with engine.begin() as connection:
@@ -32,11 +33,15 @@ def test_load_postgresql_table():
         engine,
         index=False,
     )
-    engine.dispose()
 
+    engine.dispose()
+    return "dqdetect_orders"
+
+
+def test_load_postgresql_table(postgres_table):
     df = load_database_table(
         DATABASE_URL,
-        "dqdetect_orders",
+        postgres_table,
         schema="public",
     )
 
@@ -44,7 +49,7 @@ def test_load_postgresql_table():
     assert df["amount"].tolist() == [10.5, 20.0]
 
 
-def test_cli_profiles_postgresql_table(tmp_path):
+def test_cli_profiles_postgresql_table(tmp_path, postgres_table):
     output_dir = tmp_path / "reports"
 
     exit_code = main(
@@ -52,7 +57,7 @@ def test_cli_profiles_postgresql_table(tmp_path):
             "--database-url",
             DATABASE_URL,
             "--table",
-            "dqdetect_orders",
+            postgres_table,
             "--db-schema",
             "public",
             "--format",
