@@ -9,3 +9,8 @@ def test_dtype_labels_are_semantic_and_stable():
     assert dtype_label(pd.Series(["a", "b"])) == "text"
     assert dtype_label(pd.Series([True, False])) == "boolean"
     assert dtype_label(pd.Series(pd.to_datetime(["2026-01-01"]))) == "datetime"
+
+
+def test_nullable_dtypes_are_normalized():
+    assert dtype_label(pd.Series([1, None], dtype="Int64")) == "integer"
+    assert dtype_label(pd.Series(["a", None], dtype="string")) == "text"
