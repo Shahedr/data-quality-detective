@@ -8,7 +8,7 @@ def test_iqr_multiplier_is_configurable():
     series = pd.Series([10, 10, 11, 11, 12, 12, 30])
 
     strict_count = iqr_outlier_count(series, multiplier=1.5)
-    relaxed_count = iqr_outlier_count(series, multiplier=10.0)
+    relaxed_count = iqr_outlier_count(series, multiplier=20.0)
 
     assert strict_count == 1
     assert relaxed_count == 0
