@@ -18,7 +18,7 @@
   "columns": [
     {
       "column": "order_id",
-      "dtype": "int64",
+      "dtype": "integer",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 11,
@@ -35,7 +35,7 @@
     },
     {
       "column": "order_date",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 11,
@@ -54,7 +54,7 @@
     },
     {
       "column": "customer_id",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 1,
       "missing_pct": 8.33,
       "unique_count": 10,
@@ -73,7 +73,7 @@
     },
     {
       "column": "region",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 4,
@@ -109,7 +109,7 @@
     },
     {
       "column": "unit_price",
-      "dtype": "float64",
+      "dtype": "float",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 10,
@@ -128,7 +128,7 @@
     },
     {
       "column": "freight_cost",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 1,
       "missing_pct": 8.33,
       "unique_count": 9,
@@ -148,7 +148,7 @@
     },
     {
       "column": "status",
-      "dtype": "object",
+      "dtype": "text",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 3,
