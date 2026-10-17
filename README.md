@@ -9,6 +9,27 @@ A lightweight Python CLI for the first pass through a new dataset.
 
 ![Data Quality Detective demo](assets/dqdetect-demo-v100.svg)
 
+## Browser preview (development only)
+
+An optional local browser interface is available in [webapp/](webapp/README.md).
+It supports drag-and-drop CSV and Excel upload, the same diagnostic profiling
+engine, a visual issue dashboard, and downloadable HTML/JSON reports.
+
+Install and run locally:
+
+~~~bash
+python -m pip install -e ".[web]"
+python -m uvicorn webapp.app:app --host 127.0.0.1 --port 8000
+~~~
+
+Open http://127.0.0.1:8000 in your browser.
+
+**This is not a hosted commercial service.** It currently has no authentication,
+payments, per-customer isolation, rate limiting, or verified handling of
+sensitive customer uploads. Do not publish it to the open internet without
+those safeguards. The web preview currently caps uploads at 10 MiB, 100,000
+rows, and 200 columns; the CLI does not impose those fixed limits.
+
 ## Install
 
 ~~~bash
