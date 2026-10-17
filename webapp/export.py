@@ -112,7 +112,8 @@ def full_workbook_html_chunks(profiles, frames, reviews, vba_audit=None):
     first = next(iter(profiles))
     opening, closing = _open_html(profiles[first])
     yield opening
-    yield "<h2>Workbook overview — all worksheets</h2>"
+    yield "<h2>Full spreadsheet — all rows, all worksheets</h2>"
+    yield "<h3>Workbook overview — all worksheets</h3>"
     yield (
         "<p>This export covers all analyzed worksheets, including hidden "
         "worksheets; they may contain sensitive data. "
