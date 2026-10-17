@@ -17,10 +17,11 @@ from dqdetect.checks import is_date_like_column
 PAGE_SIZE = 50
 ISSUE_FILTERS = {
     "all", "flagged", "duplicate", "missing", "mixed", "invalid_date", "outlier",
-    "dropdown_invalid"
+    "dropdown_invalid", "formula_ref"
 }
 ISSUE_LABELS = {
     "duplicate": "Duplicate row",
+    "formula_ref": "Formula contains broken #REF! reference",
     "missing": "Missing value",
     "mixed": "Mixed numeric/text value",
     "invalid_date": "Invalid date",
