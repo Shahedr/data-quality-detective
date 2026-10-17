@@ -31,9 +31,66 @@ jobs:
           dqdetect examples/messy_orders.csv --format md --output /tmp/dqdetect-reports
           test -f /tmp/dqdetect-reports/messy_orders_report.md
 
+  postgres-integration:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dqdetect
+          POSTGRES_PASSWORD: dqdetect
+          POSTGRES_DB: dqdetect
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dqdetect -d dqdetect"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install package with database support
+        run: pip install -e ".[dev,database]"
+
+      - name: Run PostgreSQL integration test
+        env:
+          DQDETECT_TEST_POSTGRES_URL: postgresql+psycopg://dqdetect:dqdetect@localhost:5432/dqdetect
+        run: pytest -q tests/test_postgres.py
+
+  action-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run local Data Quality Detective action
+        uses: ./
+        with:
+          file: examples/messy_orders.csv
+          format: json
+          output: /tmp/dqdetect-action-reports
+
+      - name: Verify action output
+        run: test -f /tmp/dqdetect-action-reports/messy_orders_report.json
+
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, postgres-integration, action-smoke]
 
     steps:
       - name: Check out repository
