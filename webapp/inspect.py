@@ -124,7 +124,7 @@ def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE):
             flags.append([
                 kind for kind in ISSUE_LABELS
                 if kind != "duplicate" and column_masks[column_idx].get(kind) is not None
-                and bool(column_masks[column_idx][position])
+                and bool(column_masks[column_idx][kind][position])
             ])
         rows.append({
             "row_number": int(position) + 1,  # data-row index; header excluded
