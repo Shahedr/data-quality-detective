@@ -6,7 +6,7 @@ A lightweight Python CLI for the first pass through a new dataset.
 
 **dqdetect** profiles CSV, Excel, and optional database-table input, flags common data-quality issues, and writes reports that can be reviewed by a person or consumed by another tool. It deliberately does **not** modify the source data.
 
-![Data Quality Detective demo](assets/dqdetect-demo-v010.svg)
+![Data Quality Detective demo](assets/dqdetect-demo-v100.svg)
 
 ## Install
 
