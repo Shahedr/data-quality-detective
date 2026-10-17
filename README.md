@@ -156,6 +156,10 @@ The repository also includes a reusable composite GitHub Action:
 ~~~yaml
 - uses: actions/checkout@v5
 
+- uses: actions/setup-python@v6
+  with:
+    python-version: "3.11"
+
 - uses: Shahedr/data-quality-detective@v1.0.0
   with:
     file: data/orders.csv
