@@ -2,7 +2,7 @@
 
 **Source:** messy_orders.csv
 
-This file is committed as an example of what Data Quality Detective reports from the sample dataset in this repository.
+This committed snapshot shows the default v1.0 profiling result for the sample dataset.
 
 ## Dataset summary
 
@@ -17,6 +17,11 @@ This file is committed as an example of what Data Quality Detective reports from
 | Date columns with invalid values | 1 |
 | Numeric columns with potential outliers | 2 |
 
+## Analysis settings
+
+- IQR multiplier: 1.5
+- Minimum outlier sample size: 4
+
 ## Column profile
 
 | Column | Type | Missing | Unique | Mixed | Invalid dates | Outliers | Issues |
@@ -30,13 +35,14 @@ This file is committed as an example of what Data Quality Detective reports from
 | freight_cost | object | 1 (8.33%) | 9 | 1 | 0 | 0 | missing values, mixed numeric/text |
 | status | object | 0 (0.00%) | 3 | 0 | 0 | 0 | none |
 
-## What I would review first
+## Recommendations
 
-- Confirm whether the duplicated order row is a true duplicate or a repeated transaction.
-- Investigate the invalid value in order_date before doing time-based analysis.
-- Keep the text value in freight_cost separate from any numeric freight field instead of converting it to zero.
-- Review the unusually large quantity and unit-price observations before deciding whether they are errors.
+- Review duplicate rows before aggregating or counting records.
+- Review missing values by column before deciding whether to impute, exclude, or preserve them.
+- Keep mixed numeric/text source values separate from any cleaned numeric field instead of coercing text to zero.
+- Inspect invalid date values before calculating durations or time-based KPIs.
+- Investigate outliers before removing them; unusual values may be valid business events.
 
-## Note
+## Notes
 
-IQR outlier flags are screening signals, not proof that a value is wrong. The tool intentionally leaves cleaning decisions to the analyst.
+The checks in this report are screening rules, not automatic cleaning instructions. Business context should decide what gets changed.
