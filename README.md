@@ -29,6 +29,15 @@ python -m uvicorn webapp.app:app --host 127.0.0.1 --port 8000
 
 Open http://127.0.0.1:8000 in your browser.
 
+**Windows Excel-native validation (developer preview):** If Microsoft Excel
+desktop is installed, the separate [Windows-native auditor](webapp/NATIVE_EXCEL.md)
+can recalculate formulas on a working copy and record changed results. A
+high-risk, expressly approved CLI mode can request a named VBA procedure
+through Excel's existing Trust Center. This feature is not launched from
+web uploads, is not a secure sandbox, and has not yet been physically verified
+on the user's Excel installation.
+
+
 **This is not a hosted commercial service.** It currently has no authentication,
 payments, per-customer isolation, rate limiting, or verified handling of
 sensitive customer uploads. Do not publish it to the open internet without
