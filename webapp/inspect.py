@@ -16,7 +16,8 @@ from dqdetect.checks import is_date_like_column
 
 PAGE_SIZE = 50
 ISSUE_FILTERS = {
-    "all", "flagged", "duplicate", "missing", "mixed", "invalid_date", "outlier"
+    "all", "flagged", "duplicate", "missing", "mixed", "invalid_date", "outlier",
+    "dropdown_invalid"
 }
 ISSUE_LABELS = {
     "duplicate": "Duplicate row",
@@ -24,6 +25,7 @@ ISSUE_LABELS = {
     "mixed": "Mixed numeric/text value",
     "invalid_date": "Invalid date",
     "outlier": "Potential IQR outlier",
+    "dropdown_invalid": "Value not in supported dropdown list",
 }
 
 
@@ -75,8 +77,42 @@ def _column_masks(series, column_name):
     return masks
 
 
-def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE):
-    """Return one page and exact cell/row flags without persisting source data."""
+def prepare_inspection(df, dropdown_masks=None):
+    """Compute all issue masks once for page browsing or complete HTML exports."""
+    row_count = len(df)
+    row_masks = {
+        label: np.zeros(row_count, dtype=bool)
+        for label in ISSUE_FILTERS - {"all", "flagged"}
+    }
+    duplicate = df.duplicated(keep=False).to_numpy(dtype=bool)
+    row_masks["duplicate"] = duplicate
+    column_masks = []
+    for idx, name in enumerate(df.columns):
+        masks = _column_masks(df.iloc[:, idx], name)
+        if dropdown_masks is not None and idx in dropdown_masks:
+            extra = dropdown_masks[idx]
+            if len(extra) != row_count:
+                raise ValueError("Dropdown mask length differs from dataset.")
+            if extra.any():
+                masks["dropdown_invalid"] = extra
+        column_masks.append(masks)
+        for kind, mask in masks.items():
+            row_masks[kind] |= mask
+
+    flagged = np.zeros(row_count, dtype=bool)
+    for mask in row_masks.values():
+        flagged |= mask
+    return {
+        "column_masks": column_masks,
+        "row_masks": row_masks,
+        "flagged": flagged,
+        "duplicate": duplicate,
+    }
+
+
+def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE,
+                      dropdown_masks=None, prepared=None, cell_limit=500):
+    """Return an annotated page, optionally reusing masks computed once."""
     if not isinstance(page, int) or page < 1:
         raise ValueError("Page must be a positive integer.")
     if issue not in ISSUE_FILTERS:
@@ -85,28 +121,16 @@ def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE):
         raise ValueError("Page size must be between 1 and 50.")
 
     row_count, col_count = df.shape
-    row_masks = {
-        label: np.zeros(row_count, dtype=bool)
-        for label in ISSUE_FILTERS - {"all", "flagged"}
-    }
-    duplicate = df.duplicated(keep=False).to_numpy(dtype=bool)
-    row_masks["duplicate"] = duplicate
-    column_masks = []
-    for col in df.columns:
-        masks = _column_masks(df[col], col)
-        column_masks.append(masks)
-        for kind, mask in masks.items():
-            row_masks[kind] |= mask
-
-    flagged = np.zeros(row_count, dtype=bool)
-    for mask in row_masks.values():
-        flagged |= mask
+    masks = prepared if prepared is not None else prepare_inspection(df, dropdown_masks)
+    column_masks = masks["column_masks"]
+    duplicate = masks["duplicate"]
+    flagged = masks["flagged"]
     if issue == "all":
         included = np.arange(row_count, dtype=int)
     elif issue == "flagged":
         included = np.flatnonzero(flagged)
     else:
-        included = np.flatnonzero(row_masks[issue])
+        included = np.flatnonzero(masks["row_masks"][issue])
 
     total = int(len(included))
     pages = max(1, math.ceil(total / page_size))
@@ -120,14 +144,18 @@ def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE):
         flags = []
         for column_idx in range(col_count):
             value = df.iat[int(position), column_idx]
-            values.append(None if pd.isna(value) else str(value)[:500])
+            text = None if pd.isna(value) else str(value)
+            values.append(
+                None if text is None else
+                (text[:cell_limit] if cell_limit is not None else text)
+            )
             flags.append([
                 kind for kind in ISSUE_LABELS
-                if kind != "duplicate" and column_masks[column_idx].get(kind) is not None
+                if kind != "duplicate" and kind in column_masks[column_idx]
                 and bool(column_masks[column_idx][kind][position])
             ])
         rows.append({
-            "row_number": int(position) + 1,  # data-row index; header excluded
+            "row_number": int(position) + 1,
             "values": values,
             "cell_flags": flags,
             "row_flags": ["duplicate"] if duplicate[position] else [],
@@ -144,13 +172,13 @@ def inspect_dataframe(df, page=1, issue="all", page_size=PAGE_SIZE):
         "pages": pages,
         "filter": issue,
         "filter_labels": ISSUE_LABELS,
-        "truncated_cell_display_at": 500,
+        "truncated_cell_display_at": cell_limit,
     }
 
 
-def append_annotated_excerpt(html_report, df):
+def append_annotated_excerpt(html_report, df, dropdown_masks=None):
     """Include actual flagged data in the downloadable HTML, capped at 50 rows."""
-    snapshot = inspect_dataframe(df, page=1, issue="flagged")
+    snapshot = inspect_dataframe(df, page=1, issue="flagged", dropdown_masks=dropdown_masks)
     heading = (
         "<h2>Highlighted data excerpt</h2>"
         "<p>Flags identify values to review, not proven errors. "
