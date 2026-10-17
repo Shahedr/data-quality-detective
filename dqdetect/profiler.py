@@ -6,6 +6,7 @@ from dqdetect.checks import (
     mixed_numeric_text_count,
 )
 from dqdetect.schema import validate_schema
+from dqdetect.types import dtype_label
 
 
 def _sample_values(series, limit=3):
@@ -53,7 +54,7 @@ def profile_dataframe(
         columns.append(
             {
                 "column": str(column),
-                "dtype": str(series.dtype),
+                "dtype": dtype_label(series),
                 "missing_count": missing_count,
                 "missing_pct": round(
                     (missing_count / row_count * 100) if row_count else 0.0,
