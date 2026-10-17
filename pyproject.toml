@@ -70,7 +70,10 @@ Issues = "https://github.com/Shahedr/data-quality-detective/issues"
 Changelog = "https://github.com/Shahedr/data-quality-detective/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-include = ["dqdetect*"]
+include = ["dqdetect*", "webapp*"]
+
+[tool.setuptools.package-data]
+webapp = ["static/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
