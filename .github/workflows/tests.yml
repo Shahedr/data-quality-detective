@@ -52,6 +52,9 @@ jobs:
       - name: Verify Excel-native CLI entrypoint
         run: python -m webapp.excel_native --help
 
+      - name: Verify desktop launcher CLI without opening a GUI
+        run: python -m webapp.excel_desktop --help
+
   postgres-integration:
     runs-on: ubuntu-latest
 
