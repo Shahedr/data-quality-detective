@@ -90,7 +90,7 @@
     },
     {
       "column": "quantity",
-      "dtype": "int64",
+      "dtype": "integer",
       "missing_count": 0,
       "missing_pct": 0.0,
       "unique_count": 4,
