@@ -89,3 +89,51 @@ def test_fail_on_issues_returns_zero_for_clean_data(tmp_path):
     )
 
     assert exit_code == 0
+
+
+def test_cli_combines_schema_comparison_and_all_reports(tmp_path):
+    previous = tmp_path / "previous.csv"
+    previous.write_text(
+        "id,amount\n1,10\n2,20\n",
+        encoding="utf-8",
+    )
+    current = tmp_path / "current.csv"
+    current.write_text(
+        "id,amount\n1,10\n2,20\n3,30\n",
+        encoding="utf-8",
+    )
+    schema = tmp_path / "schema.json"
+    schema.write_text(
+        '{"required_columns":["id","amount"],'
+        '"column_types":{"id":"numeric","amount":"numeric"},'
+        '"allow_extra_columns":true}',
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "reports"
+    exit_code = main(
+        [
+            str(current),
+            "--compare",
+            str(previous),
+            "--schema",
+            str(schema),
+            "--format",
+            "all",
+            "--output",
+            str(output_dir),
+        ]
+    )
+
+    payload = json.loads(
+        (output_dir / "current_report.json").read_text(encoding="utf-8")
+    )
+
+    assert exit_code == 0
+    assert payload["schema_validation"]["valid"] is True
+    assert payload["comparison"]["row_delta"] == 1
+    assert {path.suffix for path in output_dir.iterdir()} == {
+        ".md",
+        ".html",
+        ".json",
+    }
