@@ -54,9 +54,9 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 @media(max-width:850px){.upload-wrap,.content-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,1fr)}.shell{padding:0 16px}}
 @media(max-width:460px){.metric-grid{grid-template-columns:1fr 1fr}.metric{padding:16px}.metric-value{font-size:25px}.top{height:64px}.brand{font-size:14px}.preview{font-size:10px}h1{letter-spacing:-1.2px}}
 
-/* Interactive spreadsheet inspector */
+/* Continuously scrollable, virtualized spreadsheet */
 .grid-panel{padding:24px;margin-top:18px}
-.grid-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+.grid-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
 .grid-head h3{margin:0}
 .grid-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .grid-controls label{font-size:12px;font-weight:700;color:#536581}
@@ -68,27 +68,33 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 .key-invalid_date{background:#fff0db;color:#975300}
 .key-mixed{background:#edf0ff;color:#4556a1}
 .key-outlier{background:#ffeffa;color:#9c3975}
-.grid-scroll{overflow:auto;border:1px solid #e7ebf3;border-radius:10px;max-height:540px}
-.grid-scroll table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
-.grid-scroll th{position:sticky;top:0;z-index:2;background:#edf2fa;border-bottom:1px solid #d9e0ed;white-space:nowrap;max-width:290px}
-.grid-scroll td{min-width:110px;max-width:290px;overflow-wrap:anywhere;vertical-align:top;border-right:1px solid #edf0f5}
-.grid-scroll .row-number{font-variant-numeric:tabular-nums;background:#f7f9fd;font-weight:750;min-width:76px;position:sticky;left:0;z-index:1}
-.grid-scroll th:first-child{position:sticky;left:0;z-index:3}
-.grid-scroll tr.is-duplicate .row-number{background:#fff0ed;color:#974b28}
-.grid-scroll td.cell-missing{background:#ffeded}
-.grid-scroll td.cell-invalid_date{background:#fff0db}
-.grid-scroll td.cell-mixed{background:#edf0ff}
-.grid-scroll td.cell-outlier{background:#ffeffa}
-.grid-scroll .data-value{display:block;white-space:pre-wrap}
-.grid-scroll .data-missing{color:#a73737;font-style:italic}
-.grid-scroll .cell-note{font-size:10px;display:block;font-weight:750;margin-top:5px;opacity:.75}
-.grid-scroll .duplicate-tag{color:#a74927;font-size:10px;font-weight:800}
-.grid-footer{display:flex;gap:15px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:15px}
+.grid-scroll{position:relative;overflow:auto;height:min(68vh,650px);min-height:290px;border:1px solid #d9e0ed;border-radius:12px;overscroll-behavior:contain;background:#fff}
+.grid-canvas{position:relative;min-width:100%;box-sizing:content-box}
+.grid-sticky-header{display:grid;position:sticky;top:0;left:0;height:48px;z-index:5;background:#eff3fa;border-bottom:1px solid #d5deee}
+.sheet-header-cell,.sheet-cell{padding:9px 11px;border-right:1px solid #edf0f5;border-bottom:1px solid #edf0f5;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box}
+.sheet-header-cell{font-size:12px;font-weight:750;color:#536581;line-height:17px}
+.sheet-row{display:grid;position:absolute;left:0;height:50px;background:white}
+.sheet-row:nth-child(even){background:#fbfcff}
+.sheet-cell{font-size:12px;color:#46556f;line-height:17px;white-space:normal}
+.sheet-value{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sheet-number{position:sticky;left:0;z-index:2;font-variant-numeric:tabular-nums;background:#f3f6fc;color:#344562;font-weight:750}
+.sheet-header-cell.sheet-number{z-index:6;background:#e7eef8}
+.sheet-cell.sheet-number{font-size:12px}
+.sheet-number.sheet-duplicate{background:#fff0ed;color:#9a4327}
+.duplicate-tag{font-size:10px;font-weight:800;display:block}
+.sheet-cell.cell-missing{background:#ffeded}
+.sheet-cell.cell-invalid_date{background:#fff0db}
+.sheet-cell.cell-mixed{background:#edf0ff}
+.sheet-cell.cell-outlier{background:#ffeffa}
+.sheet-placeholder{color:#9caecb;background:#f8fafd;animation:sheetPulse 1.2s ease-in-out infinite alternate}
+@keyframes sheetPulse{from{opacity:.75}to{opacity:1}}
+.data-missing{font-style:italic;color:#ad4141}
+.cell-note{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-weight:750;opacity:.84;line-height:12px;margin-top:2px}
+.constant-head{display:block;font-size:10px;color:#a56c22}
+.sheet-empty{position:absolute;left:20px;color:#8390a5;font-size:14px;margin-top:18px}
+.grid-footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:13px}
 .grid-footer .muted{margin:0}
-.grid-page-actions{display:flex;gap:8px;align-items:center}
-.grid-page-actions button{padding:8px 11px}
-.constant-head{font-weight:650;font-size:10px;color:#a56c22;display:block;margin-top:4px}
-
+.grid-footer .error{color:#bb3434}
 </style>
 </head>
 <body>
@@ -145,8 +151,8 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
     <div class="panel grid-panel" id="gridPanel">
       <div class="grid-head">
         <div>
-          <h3>Inspect your actual spreadsheet</h3>
-          <div class="muted">Highlighted cells are candidates for review; the source file is never modified.</div>
+          <h3>Explore the entire spreadsheet</h3>
+          <div class="muted">Scroll through all rows and columns. Flagged cells are highlighted in place.</div>
         </div>
         <div class="grid-controls">
           <label for="gridFilter">Show rows</label>
@@ -162,25 +168,25 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         </div>
       </div>
       <div class="grid-key" aria-label="Flag colors">
-        <span class="key-duplicate">Duplicate row</span><span class="key-missing">Missing</span>
-        <span class="key-invalid_date">Invalid date</span><span class="key-mixed">Mixed type</span>
-        <span class="key-outlier">Outlier</span>
+        <span class="key-duplicate">Duplicate group</span>
+        <span class="key-missing">Missing value</span>
+        <span class="key-invalid_date">Invalid date</span>
+        <span class="key-mixed">Mixed numeric/text</span>
+        <span class="key-outlier">Potential outlier</span>
       </div>
-      <div class="grid-scroll" role="region" aria-label="Scrollable spreadsheet data" tabindex="0">
-        <table id="gridTable">
-          <thead><tr id="gridColumns"></tr></thead>
-          <tbody id="gridRows"></tbody>
-        </table>
-      </div>
-      <div class="grid-footer">
-        <div class="muted" id="gridCount" aria-live="polite"></div>
-        <div class="grid-page-actions">
-          <button class="secondary" id="gridPrev">← Previous</button>
-          <span id="gridPage" class="muted"></span>
-          <button class="secondary" id="gridNext">Next →</button>
+      <div class="grid-scroll" id="gridViewport" role="region" aria-label="Scrollable complete spreadsheet" tabindex="0">
+        <div class="grid-canvas" id="gridCanvas" role="grid" aria-label="Uploaded spreadsheet data">
+          <div class="grid-sticky-header" id="gridColumns" role="row"></div>
+          <div id="gridRows" role="rowgroup"></div>
         </div>
       </div>
-      <p class="notice">Rows are paged 50 at a time for speed. Each page re-reads your selected local file; it is not stored in an app database. Data-row numbering excludes the header. A duplicate group highlights every matching row, while the overview counts additional copies only. Constant columns are indicated in their header.</p>
+      <div class="grid-footer">
+        <span id="gridCount" class="muted" aria-live="polite"></span>
+        <span id="gridVisibleRange" class="muted"></span>
+      </div>
+      <p class="notice">
+        This is a read-only spreadsheet-style view, not Excel's original formatting. Scroll vertically through every accepted row and horizontally through the columns, with no page buttons. Rows load automatically as you scroll, so very large files are not fully rendered at once. The local prototype re-reads the file for each new block, and cell display is capped at 500 characters. Original files remain unchanged.
+      </p>
     </div>
     <div class="panel table-panel">
       <h3>Column-by-column profile</h3>
@@ -189,15 +195,12 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
   </section>
 </main>
 <footer><div class="shell">Data Quality Detective · Browser preview · Detect → Report → Review → Decide. Results are diagnostic, not automatic corrections.</div></footer>
+<script src="/spreadsheet.js"></script>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 let lastReport=null;
 let currentFile=null;
-let gridPage=1;
-let gridPages=1;
-let gridFilter="all";
-let gridLoading=false;
 let running=false;
 const SAMPLE_CSV=[
 "order_id,order_date,customer_id,region,quantity,unit_price,freight_cost,status",
@@ -217,7 +220,7 @@ function setStatus(message,isError=false){$("status").textContent=message;$("sta
 function item(tag,text,className){const el=document.createElement(tag);el.textContent=String(text);if(className)el.className=className;return el;}
 function showReport(data){
   lastReport=data;
-  if(data.spreadsheet)renderGrid(data.spreadsheet);
+  if(data.spreadsheet)window.DQDSpreadsheet.start(currentFile,data.spreadsheet,data.columns);
   const s=data.summary;
   $("source").textContent="Source: "+s.source;
   for(const [id,key] of [["rows","rows"],["cols","columns"],["dupes","duplicate_rows"],["missing","columns_with_missing"]]){$(id).textContent=Number(s[key]).toLocaleString();}
@@ -245,70 +248,6 @@ function showReport(data){
   $("results").classList.remove("hidden");
 }
 
-function renderGrid(snapshot){
-  const thead=$("gridColumns");
-  const tbody=$("gridRows");
-  thead.replaceChildren();
-  tbody.replaceChildren();
-  thead.append(item("th","Data row"));
-  for(let i=0;i<snapshot.columns.length;i++){
-    const th=item("th",snapshot.columns[i]);
-    if(lastReport?.columns?.[i]?.constant)th.append(item("small","Constant column","constant-head"));
-    thead.append(th);
-  }
-  const labels=snapshot.filter_labels;
-  for(const row of snapshot.rows){
-    const tr=document.createElement("tr");
-    if(row.row_flags.includes("duplicate"))tr.className="is-duplicate";
-    const num=item("td",row.row_number,"row-number");
-    if(row.row_flags.includes("duplicate"))num.append(item("div","Duplicate group","duplicate-tag"));
-    tr.append(num);
-    for(let i=0;i<row.values.length;i++){
-      const flags=row.cell_flags[i];
-      const cell=document.createElement("td");
-      if(flags.length)cell.classList.add("cell-"+flags[0]);
-      cell.title=flags.map(f=>labels[f]).join("; ");
-      cell.append(item("span",row.values[i]===null?"(blank)":row.values[i],
-                       "data-value"+(row.values[i]===null?" data-missing":"")));
-      if(flags.length)cell.append(item("small",flags.map(f=>labels[f]).join(" · "),"cell-note"));
-      tr.append(cell);
-    }
-    tbody.append(tr);
-  }
-  if(!snapshot.rows.length){
-    const tr=document.createElement("tr"),td=item("td","No rows match this filter.");
-    td.colSpan=snapshot.columns.length+1;tr.append(td);tbody.append(tr);
-  }
-  gridPage=snapshot.page;gridPages=snapshot.pages;gridFilter=snapshot.filter;
-  $("gridFilter").value=gridFilter;
-  $("gridCount").textContent=snapshot.total_matching_rows.toLocaleString()+" matching rows · "+snapshot.flagged_rows.toLocaleString()+" flagged rows in the file · "+snapshot.total_rows.toLocaleString()+" total";
-  $("gridPage").textContent="Page "+snapshot.page.toLocaleString()+" of "+snapshot.pages.toLocaleString();
-  $("gridPrev").disabled=snapshot.page<=1;
-  $("gridNext").disabled=snapshot.page>=snapshot.pages;
-}
-async function loadGrid(page,issue){
-  if(gridLoading||!currentFile)return;
-  gridLoading=true;
-  $("gridPrev").disabled=true;$("gridNext").disabled=true;$("gridFilter").disabled=true;
-  $("gridCount").textContent="Loading spreadsheet page…";
-  const body=new FormData();
-  body.append("file",currentFile);body.append("page",String(page));body.append("issue",issue);
-  try{
-    const response=await fetch("/api/rows",{method:"POST",body,cache:"no-store"});
-    const data=await response.json();
-    if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:"Could not load rows.");
-    renderGrid(data);
-  }catch(error){
-    $("gridCount").textContent="Could not load grid: "+(error.message||"Unknown error");
-    $("gridFilter").value=gridFilter;
-    $("gridPrev").disabled=gridPage<=1;
-    $("gridNext").disabled=gridPage>=gridPages;
-  }finally{$("gridFilter").disabled=false;gridLoading=false;}
-}
-$("gridFilter").addEventListener("change",e=>loadGrid(1,e.target.value));
-$("gridPrev").addEventListener("click",()=>loadGrid(gridPage-1,gridFilter));
-$("gridNext").addEventListener("click",()=>loadGrid(gridPage+1,gridFilter));
-
 async function analyzeFile(file){
   if(running)return;
   if(!file)return;
@@ -316,6 +255,7 @@ async function analyzeFile(file){
   setStatus("Analyzing "+file.name+" …");
   $("fileTitle").textContent=file.name;
   $("results").classList.add("hidden");
+  window.DQDSpreadsheet.stop();
   const body=new FormData();body.append("file",file);
   try{
     const response=await fetch("/api/analyze",{method:"POST",body,cache:"no-store"});
