@@ -73,7 +73,7 @@ Changelog = "https://github.com/Shahedr/data-quality-detective/blob/main/CHANGEL
 include = ["dqdetect*", "webapp*"]
 
 [tool.setuptools.package-data]
-webapp = ["static/*.html"]
+webapp = ["static/*.html", "static/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
