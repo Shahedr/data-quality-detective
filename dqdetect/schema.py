@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 
 import pandas as pd
+
+from dqdetect.types import dtype_label
 from pandas.api.types import (
     is_bool_dtype,
     is_datetime64_any_dtype,
@@ -112,7 +114,7 @@ def validate_schema(df, rules):
                 {
                     "column": column,
                     "expected": expected,
-                    "actual": str(series.dtype),
+                    "actual": dtype_label(series),
                 }
             )
 
