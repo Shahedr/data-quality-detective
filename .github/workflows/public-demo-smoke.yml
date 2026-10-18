@@ -36,8 +36,17 @@ jobs:
               except HTTPError as exc:
                   return exc.code, exc.read()
 
+          # Diagnose routing before waiting; an HTTP 404 is usually a
+          # permanent project routing problem, not a slow cold start.
+          for diagnostic_path in ("/", "/api/config", "/api/index", "/api/index.py", "/health"):
+              try:
+                  code, content = call(diagnostic_path)
+                  print(f"ROUTE CHECK {diagnostic_path}: HTTP {code}; {content[:180]!r}", flush=True)
+              except Exception as exc:
+                  print(f"ROUTE CHECK {diagnostic_path}: {type(exc).__name__}: {exc}", flush=True)
+
           # DNS and the initial cold-start may take several seconds after publishing.
-          for attempt in range(12):
+          for attempt in range(3):
               try:
                   status, raw = call("/api/config")
                   print(f"Public GET /api/config: {status} (attempt {attempt + 1})", flush=True)
@@ -45,9 +54,9 @@ jobs:
                       break
               except Exception as exc:
                   print(f"Deployment not ready: {type(exc).__name__}: {exc}", flush=True)
-              if attempt == 11:
+              if attempt == 2:
                   raise RuntimeError("Hosted /api/config did not become publicly available")
-              time.sleep(10)
+              time.sleep(5)
           else:
               raise RuntimeError("Missing successful config response")
 
