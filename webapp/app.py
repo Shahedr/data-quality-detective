@@ -351,7 +351,18 @@ async def export_complete_html(file: UploadFile = File(...)):
     )
 
 
-# Authenticated subscription endpoints are opt-in and fail closed until all
-# private-beta credentials and operator/legal approval are explicitly provided.
-from webapp.saas import router as saas_router
-app.include_router(saas_router)
+# SaaS extras are optional on existing local Windows installations.
+# When absent, keep the original offline workbook app fully functional.
+# Hosting must install .[web,saas] before enabling the private beta.
+import importlib.util as _importlib_util
+if all(_importlib_util.find_spec(name) is not None for name in ("jwt", "psycopg", "stripe")):
+    from webapp.saas import router as saas_router
+    app.include_router(saas_router)
+else:
+    if os.getenv("DQD_SAAS_ENABLED") == "1":
+        raise RuntimeError("SaaS was enabled without installing [saas] dependencies.")
+
+    @app.get("/api/saas/config")
+    def saas_not_installed():
+        return {"enabled": False, "plans": {}, "max_upload_bytes": 0,
+                "no_macro_execution": True}
