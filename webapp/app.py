@@ -105,8 +105,12 @@ def _saas_gate_response(request):
     if not match:
         return JSONResponse({"detail": "Sign in is required."}, status_code=401)
     try:
-        # MFA (aal2) is mandatory for every admin API request.
-        _authenticate_bearer(match.group(1), require_aal2=is_admin)
+        # Ordinary customer auth behavior stays unchanged; only the separately
+        # gated owner console demands assurance level 2 (MFA).
+        if is_admin:
+            _authenticate_bearer(match.group(1), require_aal2=True)
+        else:
+            _authenticate_bearer(match.group(1))
     except HTTPException as exc:
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     return None
