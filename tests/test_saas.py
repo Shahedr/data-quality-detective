@@ -26,8 +26,8 @@ def test_beta_closed_without_explicit_lawful_launch_approval(monkeypatch):
     assert client.get("/app").status_code == 200
     assert client.get("/privacy").status_code == 200
     assert client.get("/terms").status_code == 200
-    for endpoint in ("/api/saas/account", "/api/saas/rows"):
-        assert client.get(endpoint).status_code == 503
+    assert client.get("/api/saas/account").status_code == 503
+    assert client.post("/api/saas/rows", files={"file": ("test.csv", b"x\n1\n")}).status_code == 503
     assert client.post(
         "/api/saas/analyze", files={"file": ("private.csv", b"a\n1\n")}
     ).status_code == 503
