@@ -97,3 +97,14 @@ def test_deployed_ui_includes_mode_detection_and_demo_mode_paging(monkeypatch):
     assert "/api/demo/export/xlsx" in homepage.text
     assert "/api/demo/rows" in script.text
     assert "state.demo" in script.text
+
+
+def test_vercel_deployments_fail_closed_even_without_mode_setting(monkeypatch):
+    monkeypatch.delenv("DQD_PUBLIC_DEMO_ONLY", raising=False)
+    monkeypatch.setenv("VERCEL", "1")
+    client = TestClient(app)
+    assert client.get("/api/config").json()["mode"] == "public_demo"
+    assert client.post(
+        "/api/analyze", files={"file": ("private.csv", b"x\nhello\n")}
+    ).status_code == 403
+    assert client.get("/api/demo/analyze").status_code == 200
