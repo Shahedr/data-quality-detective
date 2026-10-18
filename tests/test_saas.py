@@ -149,3 +149,39 @@ def test_public_vercel_demo_still_denies_unauthenticated_upload(monkeypatch):
     assert client.post(
         "/api/analyze", files={"file": ("private.xlsm", b"PKnotallowed")}
     ).status_code == 403
+
+
+
+def test_stripe_live_charge_needs_verified_new_merchant_and_independent_approval(monkeypatch):
+    """Never open live customer SaaS just because both launch switches are on."""
+    env(monkeypatch)
+    assert saas.ready() is True  # harmless mocked sk_test_ integration
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_fake_for_test_only")
+    assert saas.ready() is False
+    monkeypatch.setenv("DQD_LIVE_PAYMENTS_APPROVED", "1")
+    assert saas.ready() is False  # merchant identity still unverified
+    monkeypatch.setenv("DQD_LIVE_PAYMENTS_APPROVED", "0")
+    monkeypatch.setenv("DQD_NEW_STRIPE_ACCOUNT_VERIFIED", "1")
+    assert saas.ready() is False  # live charges still not approved
+    monkeypatch.setenv("DQD_LIVE_PAYMENTS_APPROVED", "1")
+    assert saas.ready() is True  # mock only; never configure these on production now
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "random_invalid_value")
+    assert saas.ready() is False
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_mock_test_only")
+    monkeypatch.setenv("DQD_LIVE_PAYMENTS_APPROVED", "0")
+    monkeypatch.setenv("DQD_NEW_STRIPE_ACCOUNT_VERIFIED", "0")
+    assert saas.ready() is True
+    monkeypatch.setenv("DQD_SAAS_LAUNCH_APPROVED", "0")
+    assert saas.ready() is False
+
+
+def test_live_stripe_key_cannot_open_billings_or_file_uploads_without_approvals(monkeypatch):
+    env(monkeypatch)
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_mock_do_not_use")
+    monkeypatch.delenv("DQD_NEW_STRIPE_ACCOUNT_VERIFIED", raising=False)
+    monkeypatch.delenv("DQD_LIVE_PAYMENTS_APPROVED", raising=False)
+    assert client.get("/api/saas/config").json()["enabled"] is False
+    assert client.post("/api/saas/billing/checkout").status_code == 503
+    assert client.post("/api/saas/analyze", files={
+        "file": ("private.csv", b"c\n1\n")
+    }).status_code == 503
