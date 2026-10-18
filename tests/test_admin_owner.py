@@ -207,3 +207,36 @@ def test_magic_link_login_only_targets_existing_owner_and_does_not_enable_signup
     assert 'id="emailLink"' in html
     assert "emailLink" in js
     assert "Supabase dashboard password" in js
+
+
+
+def test_owner_email_validation_accepts_real_email_and_rejects_malformed():
+    """Execute the actual browser-side regex with Node so escaping regressions fail CI."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+    script = (Path(__file__).resolve().parents[1] / "webapp" / "static" / "admin.js").read_text(encoding="utf-8")
+    # Backslash-s must represent whitespace, never the literal letters '\' and 's'.
+    assert r"/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)" in script
+    if not shutil.which("node"):
+        pytest.skip("Node unavailable for runtime regex verification")
+    node = r"""
+      const fs = require('node:fs');
+      const assert = require('node:assert/strict');
+      const code = fs.readFileSync(process.argv[1], 'utf8');
+      const line = code.split('\n').find(x => x.includes('.test(email)'));
+      assert.ok(line, 'Email validator missing');
+      const match = line.match(/!(\/.*\/)\.test\(email\)/);
+      assert.ok(match, 'Email validator expression missing');
+      const regex = new Function('return ' + match[1])();
+      assert.equal(regex.test('shahedr2744@gmail.com'), true);
+      assert.equal(regex.test('owner+test@example.org'), true);
+      assert.equal(regex.test('x @gmail.com'), false);
+      assert.equal(regex.test('missing-at-sign'), false);
+      assert.equal(regex.test('name@example'), false);
+    """
+    result = subprocess.run(
+        ["node", "-e", node, str(Path(__file__).resolve().parents[1] / "webapp" / "static" / "admin.js")],
+        capture_output=True, text=True, timeout=15
+    )
+    assert result.returncode == 0, result.stderr
