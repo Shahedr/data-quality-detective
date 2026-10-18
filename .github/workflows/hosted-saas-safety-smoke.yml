@@ -41,10 +41,14 @@ jobs:
           config=json.loads(body)
           assert config['enabled'] is False,config
           print('Private-beta commercial endpoints disabled: OK')
-          for route,fragment in [('/app',b'Private workspace'),('/privacy',b'Privacy'),('/terms',b'Terms')]:
+          for route,fragment in [('/app',b'Private workspace'),('/product',b'Not available for purchase yet'),('/privacy',b'Privacy'),('/terms',b'Terms')]:
               status,body=get(route)
               assert status==200 and fragment.lower() in body.lower(),(route,status,body[:150])
               print('Route available: '+route)
+          status,body=get('/app')
+          assert status==200 and b'src="https://cdn.jsdelivr.net' not in body
+          assert b'Data Quality Detective' in body
+          print('No third-party auth SDK on disabled workspace: OK')
           for route in ('/api/saas/account','/api/saas/billing/checkout'):
               method='GET' if route.endswith('/account') else 'POST'
               status,body=get(route,method=method,data=b'' if method=='POST' else None)
