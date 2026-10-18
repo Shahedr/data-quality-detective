@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.saas_accounts (
     user_id uuid PRIMARY KEY,
     stripe_customer_id text UNIQUE,
     subscription_id text UNIQUE,
+    subscription_event_at bigint NOT NULL DEFAULT 0,
     subscription_status text NOT NULL DEFAULT 'free'
         CHECK (subscription_status IN (
             'free', 'incomplete', 'incomplete_expired', 'trialing', 'active',
