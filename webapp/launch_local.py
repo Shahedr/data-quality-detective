@@ -10,8 +10,6 @@ import threading
 import time
 import webbrowser
 
-import uvicorn
-
 LOCAL_HOST = "127.0.0.1"
 
 
@@ -37,6 +35,7 @@ def launch(preferred=8000, open_browser=True):
     url = f"http://{LOCAL_HOST}:{port}"
     print(f"Data Quality Detective: starting local app at {url}", flush=True)
     print("Keep this window open. Press Ctrl+C to stop.", flush=True)
+    import uvicorn
     config = uvicorn.Config(
         "webapp.app:app", host=LOCAL_HOST, port=port, log_level="info",
     )
