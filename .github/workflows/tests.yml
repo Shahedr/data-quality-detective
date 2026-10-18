@@ -88,7 +88,7 @@ jobs:
       - name: Run PostgreSQL integration test
         env:
           DQDETECT_TEST_POSTGRES_URL: postgresql+psycopg://dqdetect:dqdetect@localhost:5432/dqdetect
-        run: pytest -q tests/test_postgres.py
+        run: pytest -q tests/test_postgres.py tests/test_saas_postgres.py
 
   action-smoke:
     runs-on: ubuntu-latest
