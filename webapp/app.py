@@ -64,7 +64,8 @@ def _saas_gate_response(request):
     alone cannot stop a malicious client that lies about streamed bytes.
     """
     path = request.url.path
-    if not path.startswith("/api/saas/") or path == "/api/saas/config":
+    if (not path.startswith("/api/saas/")
+            or path in {"/api/saas/config", "/api/saas/admin/config"}):
         return None
 
     import importlib.util
@@ -72,8 +73,13 @@ def _saas_gate_response(request):
         return JSONResponse({"detail": "Private beta is not available."}, status_code=503)
 
     from fastapi import HTTPException
-    from webapp.saas import ready, _authenticate_bearer, MAX_UPLOAD_BYTES, MAX_WEBHOOK_BYTES
-    if not ready():
+    from webapp.saas import ready, admin_ready, _authenticate_bearer, MAX_UPLOAD_BYTES, MAX_WEBHOOK_BYTES
+    # Internal read-only admin console has its own explicit switch.
+    # Its availability must never enable customer uploads, billing or signup.
+    is_admin = path.startswith("/api/saas/admin/")
+    if is_admin and not admin_ready():
+        return JSONResponse({"detail": "Admin console is not configured."}, status_code=503)
+    if not is_admin and not ready():
         return JSONResponse({"detail": "Private beta is not enabled."}, status_code=503)
 
     if request.method == "POST" and path in {
@@ -99,7 +105,8 @@ def _saas_gate_response(request):
     if not match:
         return JSONResponse({"detail": "Sign in is required."}, status_code=401)
     try:
-        _authenticate_bearer(match.group(1))
+        # MFA (aal2) is mandatory for every admin API request.
+        _authenticate_bearer(match.group(1), require_aal2=is_admin)
     except HTTPException as exc:
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     return None
@@ -125,7 +132,7 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if request.url.path in {"/app", "/privacy", "/terms", "/product"}:
+    if request.url.path in {"/app", "/admin", "/privacy", "/terms", "/product"}:
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; "
             "script-src 'self' https://cdn.jsdelivr.net; "
@@ -158,6 +165,16 @@ def public_product_page():
 @app.get("/app", include_in_schema=False)
 def private_workspace():
     return FileResponse(_ROOT / "static" / "saas.html", media_type="text/html")
+
+
+@app.get("/admin", include_in_schema=False)
+def owner_admin_page():
+    return FileResponse(_ROOT / "static" / "admin.html", media_type="text/html")
+
+
+@app.get("/admin.js", include_in_schema=False)
+def owner_admin_script():
+    return FileResponse(_ROOT / "static" / "admin.js", media_type="application/javascript")
 
 
 @app.get("/saas.js", include_in_schema=False)
