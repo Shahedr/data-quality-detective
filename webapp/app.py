@@ -38,7 +38,8 @@ _ROOT = Path(__file__).resolve().parent
 
 def _public_demo_only():
     """True ONLY for explicitly configured public sample-only deployments."""
-    return os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
+    # Fail closed on Vercel even if project variables are misconfigured.
+    return bool(os.environ.get("VERCEL")) or os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
 
 
 def _sample_bytes():
@@ -71,6 +72,8 @@ async def security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
 
