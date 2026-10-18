@@ -1,63 +1,45 @@
 # Data Quality Detective
 
-<!-- Update the pinned PyPI badge and link when publishing a new package version. -->
-[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml) [![PyPI v1.0.0](https://img.shields.io/badge/PyPI-v1.0.0-blue)](https://pypi.org/project/dqdetect/1.0.0/) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![MIT License](https://img.shields.io/badge/license-MIT-green)
+[![tests](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml/badge.svg)](https://github.com/Shahedr/data-quality-detective/actions/workflows/tests.yml)
+[![PyPI v1.0.0](https://img.shields.io/badge/PyPI-v1.0.0-blue)](https://pypi.org/project/dqdetect/)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![MIT License](https://img.shields.io/badge/license-MIT-green)
 
-A lightweight Python CLI for the first pass through a new dataset.
+**Free, open-source spreadsheet and CSV quality analyzer. No account, subscriptions, ads, or payments.**
 
-**dqdetect** profiles CSV, Excel, and optional database-table input, flags common data-quality issues, and writes reports that can be reviewed by a person or consumed by another tool. It deliberately does **not** modify the source data.
+[**Open the free web app →**](https://data-quality-detective-demo.vercel.app) · [Install the Python CLI](#install) · [Report an issue](https://github.com/Shahedr/data-quality-detective/issues)
 
 ![Data Quality Detective demo](assets/dqdetect-demo-v100.svg)
 
-## Use Data Quality Detective
+Analyze CSV, XLSX, and XLSM files for missing data, duplicate rows, invalid dates, mixed data types, suspicious outliers, and selected spreadsheet validation issues. Inspect rows and export a full HTML report, JSON findings, or a separate annotated XLSX audit. **Original input files are never modified.**
 
-**Windows (full local tool):** Download the repository ZIP, extract it, then
-double-click `INSTALL_ON_WINDOWS.cmd` once. Thereafter use
-`START_DATA_QUALITY_DETECTIVE.cmd` to start the app and open the browser on
-the first free local port, or `START_EXCEL_VALIDATOR.cmd` for desktop Excel
-formula testing. See [Windows native workbook notes](webapp/NATIVE_EXCEL.md).
+## Use the web app
 
-**Hosted preview:** The [public web deployment guide](webapp/DEPLOYMENT.md)
-describes a hosted sample-data demo that allows people to try the interface
-without accounts or uploads. For security, it **cannot accept customer files
-or run macros**. The complete full-data features remain local while the
-commercial SaaS authentication, isolation, storage, and billing are developed.
+1. Open [Data Quality Detective](https://data-quality-detective-demo.vercel.app).
+2. Click **Choose file** or drag a CSV/XLSX/XLSM spreadsheet into the upload area (up to **4 MiB online**).
+3. Review the summary, choose a worksheet, inspect flagged rows, and download the HTML or Excel audit.
+4. Or choose **Try example data** to see the interface using the bundled 12-row fictional CSV.
 
-## Browser preview (development only)
+**Important privacy note:** Online uploads are transmitted to Vercel's server to be analyzed. This project does not intentionally keep spreadsheet files in a database, but hosting infrastructure may use temporary files and operational logs. **Do not upload confidential, regulated, personal or highly sensitive data.** For private work, run the tool locally on your own computer.
 
-An optional local browser interface is available in [webapp/](webapp/README.md).
-It supports drag-and-drop CSV, Excel XLSX and macro-enabled XLSM upload, the
-same diagnostic profiling engine, multi-worksheet navigation, an annotated
-scrollable data grid, and an all-worksheet downloadable HTML report. XLSM files
-are analyzed as cell data: VBA is never executed, supported list validations
-can be checked, and an optional `oletools` extra adds static VBA source triage.
-See the [web-app limitations](webapp/README.md) for unsupported dynamic Excel
-features and commercial deployment requirements.
+The online service is a free, best-effort demo-quality utility—not an enterprise-managed document processing service. The server enforces a 4 MiB hosted upload cap (10 MiB local), with a combined workbook limit of 100,000 rows, 200 columns per sheet, and 40 sheets; resource limits and hosting quotas apply. Spreadsheet macros are **never executed by the website**.
 
-Install and run locally:
+## Run locally — no upload to someone else's server
 
-~~~bash
+**Windows:** Download the repository as a ZIP and extract it. Run `INSTALL_ON_WINDOWS.cmd` once, then double-click `START_DATA_QUALITY_DETECTIVE.cmd`. A separate supervised Excel-only validator is available through `START_EXCEL_VALIDATOR.cmd` for advanced Windows users.
+
+**macOS / Linux / Windows terminal:**
+
+```bash
 python -m pip install -e ".[web]"
 python -m uvicorn webapp.app:app --host 127.0.0.1 --port 8000
-~~~
+```
 
-Open http://127.0.0.1:8000 in your browser.
+Visit http://127.0.0.1:8000. The local version accepts files up to 10 MiB without requiring Stripe, Supabase, or any account. See [web app guide](webapp/README.md), [deployment notes](webapp/DEPLOYMENT.md), and [Windows native Excel notes](webapp/NATIVE_EXCEL.md).
 
-**Windows Excel-native validation (developer preview):** If Microsoft Excel
-desktop is installed, the separate [Windows-native auditor](webapp/NATIVE_EXCEL.md)
-can recalculate formulas on a working copy and record changed results. A
-high-risk, expressly approved CLI mode can request a named VBA procedure
-through Excel's existing Trust Center. This feature is not launched from
-web uploads, is not a secure sandbox, and has not yet been physically verified
-on the user's Excel installation.
+## Python CLI and GitHub Action
 
-
-**This is not a hosted commercial service.** It currently has no authentication,
-payments, per-customer isolation, rate limiting, or verified handling of
-sensitive customer uploads. Do not publish it to the open internet without
-those safeguards. The web preview currently caps uploads at 10 MiB, 100,000
-rows across all workbook sheets, 200 columns per sheet, and 40 sheets; the
-CLI does not impose those fixed limits.
+The independently usable `dqdetect` Python CLI remains available on [PyPI](https://pypi.org/project/dqdetect/) and as a reusable GitHub Action. Commercial SaaS experiments have been removed; the project is maintained as free MIT-licensed software.
 
 ## Install
 
