@@ -43,7 +43,7 @@ jobs:
       - name: Import the published package OUTSIDE the repository
         run: |
           cd /tmp
-          python -c "from webapp.app import app; paths={r.path for r in app.routes}; assert {'/api/saas/config','/product','/api/demo/analyze'}.issubset(paths),paths"
+          python -c "from webapp.app import app; paths={getattr(r,'path','') for r in app.routes}; assert {'/api/saas/config','/product','/api/demo/analyze'}.issubset(paths),paths"
       - name: Import the Vercel root FastAPI entrypoint
         run: python -c "from app import app; assert app is not None"
 
