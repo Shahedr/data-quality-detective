@@ -93,6 +93,11 @@ A selected-sheet dashboard now includes a **workbook overview** with each worksh
 python -m pip install -e ".[web,macro-audit]"
 ```
 
+Scanner alerts are now labeled by evidence type: **code keyword found**,
+**comment/text-only or unverified**, or **scanner heuristic**. These are
+interpretation aids, not security verdicts: comments and strings can trigger
+scanner rules, and runtime-generated calls may evade keyword matching.
+
 The VBA scanner does **not execute, compile, debug, or prove a macro's correctness or safety**. Scanners can miss malicious or broken code. If the scanner is missing or parsing fails, the dashboard reports this plainly. Real execution requires a separate, explicitly approved and isolated Microsoft Excel for Windows environment; the upload endpoint **never executes macros**. An Excel-native test runner, full formula recalculation, workbook editing, ActiveX/control simulation, and complete VBA execution compatibility are **not included in this preview**.
 
 Excel formulas are **not evaluated or refreshed**: the analyzer reads cached
