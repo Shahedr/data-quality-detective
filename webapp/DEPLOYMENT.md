@@ -12,27 +12,40 @@ It intentionally **rejects every user-upload endpoint with HTTP 403**.
 Only bundled fictional CSV sample data is profiled, paged, and exported.
 Excel/VBA execution is **never available through any web endpoint**.
 
-Vercel sets the environment variable \`VERCEL\`, so the backend
+Vercel sets the environment variable `VERCEL`, so the backend
 **fails closed to sample-only mode** even if
-\`DQD_PUBLIC_DEMO_ONLY\` was accidentally omitted. Other environments
-can explicitly set \`DQD_PUBLIC_DEMO_ONLY=1\` to preview the hosted demo.
+`DQD_PUBLIC_DEMO_ONLY` was accidentally omitted. Other environments
+can explicitly set `DQD_PUBLIC_DEMO_ONLY=1` to preview the hosted demo.
 
 ### Vercel deployment
 
-The repository includes \`api/index.py\`, \`requirements.txt\`, and
-\`vercel.json\`. Connect the \`main\` branch as a Vercel **FastAPI** project
-with root directory at the repository root. Optionally set
-\`DQD_PUBLIC_DEMO_ONLY=1\` for clarity and extra configuration visibility.
-Keep the Vercel deployment sample-only.
+The repository includes root-level `app.py` and `requirements.txt`.
+Choose the **FastAPI** framework, leave the project root at the repository
+root, and use Vercel's native root-level FastAPI entrypoint. **Do not add
+a catch-all rewrite to `/api/index.py`**: that configuration was
+successfully built but returned HTTP 404 for every actual route.
+
+**Live sample-only demo:** https://data-quality-detective-demo.vercel.app
+
+The initial public demo was deployed directly via Vercel because the
+connected Vercel API account reported no GitHub Login Connection at
+the time. The direct deployment has **no Git-linked automatic redeployment**,
+and installs a **specific tested GitHub commit**.
+To enable automatic updates, link the `main` branch of
+`Shahedr/data-quality-detective` in Vercel's project **Settings → Git**
+once the Vercel account's GitHub Login Connection is visible.
+Set `DQD_PUBLIC_DEMO_ONLY=1` explicitly for clarity (deployments on Vercel
+already fail closed to demo mode via the `VERCEL` environment variable).
+Keep the hosted deployment sample-only.
 
 Once deployed, verify:
 
-- \`GET /\` loads the demo interface and **Explore interactive demo** works.
-- \`GET /api/config\` reports \`public_demo\` and \`upload_allowed=false\`.
-- \`GET /api/demo/analyze\` returns results for exactly 12 sample rows.
-- \`GET /api/demo/rows?issue=duplicate\` returns 2 flagged rows.
-- \`GET /api/demo/export/html\` and \`/api/demo/export/xlsx\` return sample reports.
-- \`POST /api/analyze\` (even with arbitrary XLSM bytes) returns HTTP **403**.
+- `GET /` loads the demo interface and **Explore interactive demo** works.
+- `GET /api/config` reports `public_demo` and `upload_allowed=false`.
+- `GET /api/demo/analyze` returns results for exactly 12 sample rows.
+- `GET /api/demo/rows?issue=duplicate` returns 2 flagged rows.
+- `GET /api/demo/export/html` and `/api/demo/export/xlsx` return sample reports.
+- `POST /api/analyze` (even with arbitrary XLSM bytes) returns HTTP **403**.
 - No macro execution or uploaded-file processing is exposed remotely.
 
 Public Vercel hosting is NOT the finished commercial product. Do not advertise
@@ -42,13 +55,13 @@ data-protection guarantees, billing, or production Excel execution.
 ## Windows: one-click full local version
 
 1. Download the repository ZIP and extract the project to a folder.
-2. Double-click \`INSTALL_ON_WINDOWS.cmd\` once to install dependencies.
-3. Double-click \`START_DATA_QUALITY_DETECTIVE.cmd\` to launch the browser
+2. Double-click `INSTALL_ON_WINDOWS.cmd` once to install dependencies.
+3. Double-click `START_DATA_QUALITY_DETECTIVE.cmd` to launch the browser
    app automatically on the first free local port between 8000 and 8099.
-4. Optionally double-click \`START_EXCEL_VALIDATOR.cmd\` to open real Excel
+4. Optionally double-click `START_EXCEL_VALIDATOR.cmd` to open real Excel
    calculation testing in a separate supervised Windows window.
 
-The script always uses \`127.0.0.1\` (your own computer), never \`0.0.0.0\`.
+The script always uses `127.0.0.1` (your own computer), never `0.0.0.0`.
 Do not expose the local FastAPI server to the public internet.
 
 ## Requirements before a customer-upload SaaS launch
