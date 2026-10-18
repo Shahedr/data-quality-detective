@@ -85,6 +85,7 @@ def _render_html(report):
         ("Formulas inventoried", str(report["formulas_inventory_count"])),
         ("Formula results changed", str(report["formula_results_changed"])),
         ("Macro executed", str(report["macro_executed"])),
+        ("User approved macro attempt", str(report.get("macro_approval_confirmed"))),
         ("Source unchanged", str(report.get("original_unchanged"))),
     ]
     bits = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
@@ -136,9 +137,39 @@ def _prepare_workbook(source_file, output_dir):
     return source, run_dir, workbook_copy
 
 
+
+def _prompt_to_approve_macro(working_copy, input_fn=input):
+    """Pause for human approval in Excel. NEVER change Trust Center policy.
+
+    Excel's trusted-document decision is per workbook/location. Approval of
+    the ORIGINAL file does not automatically approve a newly created copy.
+    The explicit keyboard confirmation is an extra gate, not proof that
+    Excel has enabled macros or that any macro is safe.
+    """
+    print("\nDATA QUALITY DETECTIVE — MACRO REVIEW CHECKPOINT", flush=True)
+    print("Excel has opened the WORKING COPY:\n  " + str(working_copy), flush=True)
+    print(
+        "Check the Excel security banner for THIS COPY. Only if you recognize"
+        " and approve this exact VBA code, use Excel's own Enable Content"
+        " action if Excel offers it. Do NOT disable global macro protection"
+        " or add a broad trusted folder.",
+        flush=True,
+    )
+    print(
+        "If Excel has blocked this copy without an approval option, cancel"
+        " and review it separately. The runner will not bypass that block.",
+        flush=True,
+    )
+    try:
+        answer = input_fn("Type RUN to attempt the named macro; anything else cancels: ")
+    except (KeyboardInterrupt, EOFError):
+        return False
+    return str(answer).strip() == "RUN"
+
+
 def run_native_audit(
     source_file, output_dir, mode="recalculate", macro_name=None,
-    confirmation=None, dispatch=None
+    confirmation=None, dispatch=None, approve_macro=None
 ):
     """Run Excel locally on a temporary copy with a dedicated Excel instance.
 
@@ -183,6 +214,7 @@ def run_native_audit(
         "formula_results_changed": 0,
         "changed_details": [],
         "macro_executed": False,
+        "macro_approval_confirmed": False,
         "macro_name": macro_name if mode == "macro" else None,
         "macro_return_value": None,
         "warnings": [],
@@ -224,8 +256,17 @@ def run_native_audit(
                 "differ from the source's saved calculation results."
             )
         else:
-            # Do not programmatically enable macros, alter trusted locations,
-            # or bypass Trust Center. If macros are blocked, Run will fail.
+            # A newly generated working copy may not inherit the original's
+            # Excel Trusted Document approval. Give the human time to use
+            # Excel's own visible security UI for THIS copy before Run.
+            # Approval does NOT programmatically enable VBA or bypass policy.
+            reviewer = approve_macro if approve_macro is not None else _prompt_to_approve_macro
+            if not reviewer(workbook_copy):
+                raise NativeExcelError(
+                    "Cancelled at the macro approval checkpoint; "
+                    "no macro was executed."
+                )
+            report["macro_approval_confirmed"] = True
             # Workbook_Open/other events are disabled, but VBA itself may call
             # anything available to the user's Windows account.
             qualified = "'" + workbook_copy.name.replace("'", "''") + "'!" + macro_name
@@ -266,6 +307,13 @@ def run_native_audit(
             "Excel native operation failed or was blocked. No success is claimed. "
             "Reason: " + str(exc)[:400]
         )
+        if mode == "macro" and not report["macro_executed"]:
+            report["warnings"].append(
+                "The working copy might not be trusted even when the original "
+                "file was approved. Excel's own security controls determine "
+                "whether the named VBA can run. Do not disable Trust Center "
+                "protection globally to solve this."
+            )
     finally:
         try:
             if workbook is not None:
