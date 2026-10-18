@@ -125,7 +125,7 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if request.url.path in {"/app", "/privacy", "/terms"}:
+    if request.url.path in {"/app", "/privacy", "/terms", "/product"}:
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; "
             "script-src 'self' https://cdn.jsdelivr.net; "
@@ -148,6 +148,11 @@ def spreadsheet_script():
     return FileResponse(
         _ROOT / "static" / "spreadsheet.js", media_type="application/javascript"
     )
+
+
+@app.get("/product", include_in_schema=False)
+def public_product_page():
+    return FileResponse(_ROOT / "static" / "product.html", media_type="text/html")
 
 
 @app.get("/app", include_in_schema=False)
