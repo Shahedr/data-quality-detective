@@ -1,0 +1,41 @@
+name: Temporary Preview Runtime Smoke
+on:
+  push:
+    branches: [fix/vercel-noneditable-python-runtime]
+    paths: [.github/workflows/preview-runtime-smoke.yml]
+permissions:
+  contents: read
+jobs:
+  verify-preview-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check actual separate Vercel preview runtime
+        run: |
+          python - <<'PY'
+          import json, time
+          from urllib.request import Request,urlopen
+          from urllib.error import HTTPError
+          origin='https://data-quality-detective-demo-7c88mcp42-shahedr2744-1751.vercel.app'
+          def get(path,method='GET',data=None):
+              req=Request(origin+path,method=method,data=data)
+              try:
+                  with urlopen(req,timeout=15) as resp: return resp.status,resp.read()
+              except HTTPError as exc: return exc.code,exc.read()
+          for i in range(10):
+              code,raw=get('/api/saas/config')
+              print('Preview config HTTP',code,flush=True)
+              if code==200: break
+              time.sleep(5)
+          assert code==200,(code,raw[:300])
+          assert json.loads(raw)['enabled'] is False
+          for path in ('/product','/app','/privacy','/terms'):
+              code,raw=get(path)
+              print('Preview '+path,code,flush=True)
+              assert code==200,(path,code,raw[:200])
+          code,raw=get('/api/demo/analyze')
+          assert code==200 and json.loads(raw)['summary']['rows']==12
+          code,raw=get('/api/analyze',method='POST',data=b'')
+          assert code==403,(code,raw[:200])
+          print('PREVIEW RUNTIME VERIFIED')
+          PY
