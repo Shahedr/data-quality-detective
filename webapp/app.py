@@ -18,6 +18,7 @@ from webapp.excel import inspect_excel
 from webapp.export import full_html_chunks, full_workbook_html_chunks
 from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 from webapp.vba import audit_vba
+from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.workbook import (
     MAX_FILE_BYTES, MAX_ROWS, MAX_COLUMNS, parse_sheets, select_sheet
 )
@@ -185,6 +186,32 @@ async def inspect_rows(
     return JSONResponse(inspect_bytes(
         filename, data, page=page, issue=issue, sheet=sheet
     ))
+
+
+@app.post("/api/export/xlsx")
+async def export_review_xlsx(file: UploadFile = File(...)):
+    """Download a separate annotated, macro-free review XLSX workbook."""
+    filename, data = await _get_upload(file)
+    _, review, frames, _, suffix, reviews = _read_dataset(
+        filename, data, all_reviews=True
+    )
+    try:
+        profiles = {
+            tab: profile_dataframe(frame, source_name=filename)
+            for tab, frame in frames.items()
+        }
+        macro = _workbook_macro_audit(filename, data, review, suffix)
+        output = build_review_workbook(frames, reviews, profiles, filename, macro)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422, detail="Unable to build annotated Excel review report."
+        ) from exc
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(filename).stem)[:70] or "data"
+    return StreamingResponse(
+        stream_file_chunks(output),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{stem}_audit_review.xlsx"'},
+    )
 
 
 @app.post("/api/export/html")

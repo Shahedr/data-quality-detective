@@ -153,6 +153,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="downloads">
         <button class="secondary" id="downloadJson">↓ Download JSON</button>
         <button class="secondary" id="downloadHtml">↓ Download full HTML spreadsheet</button>
+        <button class="secondary" id="downloadXlsx">↓ Download Excel audit</button>
       </div>
     </div>
     <div class="panel workbook-switch hidden" id="workbookSwitch">
@@ -299,13 +300,16 @@ function showReport(data){
     macro.append(item("p","Source scan: "+audit.source_scan_status+
       " · modules: "+audit.modules.length+
       " · auto-run patterns: "+audit.finding_counts.autoexec+
-      " · suspicious patterns: "+audit.finding_counts.suspicious+
+      " · scanner suspicious-pattern hits: "+audit.finding_counts.suspicious+
+      " · code-keyword matches: "+(audit.finding_counts.code_matches||0)+
+      " · comment/text-only or unverified: "+(audit.finding_counts.context_only||0)+
+      " · heuristic-only: "+(audit.finding_counts.heuristic||0)+
       " · indicators of compromise: "+audit.finding_counts.ioc));
     macro.append(item("p",audit.limitations));
     for(const module of audit.modules.slice(0,25))
       macro.append(item("div","Module: "+module.name+" · "+module.source_lines+" lines","audit-finding"));
     for(const finding of audit.findings.slice(0,25))
-      macro.append(item("div",finding.category+": "+finding.keyword+" — "+finding.explanation,"audit-finding"));
+      macro.append(item("div",finding.category+": "+finding.keyword+" — "+finding.explanation+" · Evidence: "+(finding.evidence||"scanner heuristic"),"audit-finding"));
   }else{macro.classList.add("hidden");}
   if(data.spreadsheet)window.DQDSpreadsheet.start(
     currentFile,data.spreadsheet,data.columns,data.selected_sheet||""
@@ -368,6 +372,31 @@ function download(content,kind,extension){
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 $("downloadJson").addEventListener("click",()=>{if(lastReport)download(JSON.stringify(lastReport.report_json,null,2),"application/json","json");});
+$("downloadXlsx").addEventListener("click",async()=>{
+  if(!lastReport||!currentFile)return;
+  const button=$("downloadXlsx");
+  button.disabled=true;
+  const previous=button.textContent;
+  button.textContent="Preparing Excel audit…";
+  setStatus("Creating a separate, color-coded Excel review file…");
+  try{
+    const body=new FormData();body.append("file",currentFile);
+    const response=await fetch("/api/export/xlsx",{method:"POST",body,cache:"no-store"});
+    if(!response.ok){
+      let message="Unable to create Excel review report.";
+      try{const e=await response.json();if(e.detail)message=e.detail;}catch(_){}
+      throw Error(message);
+    }
+    const blob=await response.blob();
+    const filename=(currentFile.name||"dataset").replace(/\.(csv|xlsx|xlsm)$/i,"")+"_audit_review.xlsx";
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");link.href=url;link.download=filename;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    setStatus("Excel audit downloaded. Open the separate review workbook; the original is untouched.");
+  }catch(error){setStatus("Excel export failed: "+(error.message||"Unknown error"),true);}
+  finally{button.disabled=false;button.textContent=previous;}
+});
 $("downloadHtml").addEventListener("click",async()=>{
   if(!lastReport||!currentFile)return;
   const button=$("downloadHtml");
