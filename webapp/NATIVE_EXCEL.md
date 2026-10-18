@@ -15,7 +15,7 @@ called from a web upload or API**.
 - **Macro mode:** launch Excel visibly, follow its existing Trust Center
   policies, and request **one explicitly named VBA macro**. Requires an exact
   acknowledgement phrase. Macro source is not modified.
-- **CI verified:** mocked Excel-automation tests on the supported Python matrix.
+- **CI verified:** mocked Excel-automation tests on the supported Python matrix,\n  including approved and cancelled manual-review checkpoints.
 - **Not yet physically verified:** actual Excel COM automation on your Windows
   installation; macro behavior depends on your Excel version, trusted sources,
   permissions, add-ins and the workbook. A successful mock test does not prove
@@ -85,6 +85,18 @@ python -m webapp.excel_native --file "C:\Data\trusted.xlsm" --output-dir "C:\DQD
 ```
 
 - Microsoft Excel is opened **visibly** in a new Excel instance.
+- The runner now **pauses after opening the working copy** and prints the exact
+  copy path. Review the **copy** in the visible Excel window; if Excel offers
+  its normal **Enable Content** action for this specific reviewed document,
+  choose it only after confirming the code. Return to PowerShell and type
+  **RUN** to attempt the named macro, or anything else to cancel.
+  Typing RUN does not override Excel security: a blocked workbook still fails.
+- **Why the pause matters:** Excel's trust decision for the original workbook
+  generally does **not** transfer to a newly created copy in the reports folder.
+  The runner never clears Mark-of-the-Web, unblocks a file, modifies Trust
+  Center policy, or registers a trusted location. If no approval option is
+  available, cancel and investigate the file's origin; never lower your
+  global security settings just to make the test pass.
 - The tool **never switches Trust Center to enable all macros**, does not
   modify trusted locations or user registry settings, and does not enable
   programmatic VBA-project editing. It follows **your current Trust Center
