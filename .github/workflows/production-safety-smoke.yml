@@ -61,7 +61,7 @@ jobs:
           bad,head=multipart("not-data.json",b"{}")
           code,typ,raw=call("/api/analyze","POST",bad,head)
           assert code==415,(code,raw[:200])
-          code,typ,raw=call("/api/analyze","POST",b"x",{"Content-Length":str(5*1024*1024)})
+          code,typ,raw=call("/api/analyze","POST",b"x"*(5*1024*1024))
           assert code==413,(code,raw[:200])
           for path in ("/app","/product","/privacy","/terms","/api/saas/config",
                        "/api/saas/analyze","/api/saas/billing/checkout"):
