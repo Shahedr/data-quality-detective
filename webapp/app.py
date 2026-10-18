@@ -20,7 +20,6 @@ from webapp.export import full_html_chunks, full_workbook_html_chunks
 from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 from webapp.vba import audit_vba
-from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.workbook import (
     MAX_FILE_BYTES, MAX_ROWS, MAX_COLUMNS, parse_sheets, select_sheet
 )
@@ -87,6 +86,31 @@ def spreadsheet_script():
     return FileResponse(
         _ROOT / "static" / "spreadsheet.js", media_type="application/javascript"
     )
+
+
+@app.get("/app", include_in_schema=False)
+def private_workspace():
+    return FileResponse(_ROOT / "static" / "saas.html", media_type="text/html")
+
+
+@app.get("/saas.js", include_in_schema=False)
+def private_workspace_script():
+    return FileResponse(_ROOT / "static" / "saas.js", media_type="application/javascript")
+
+
+@app.get("/saas.css", include_in_schema=False)
+def private_workspace_styles():
+    return FileResponse(_ROOT / "static" / "saas.css", media_type="text/css")
+
+
+@app.get("/privacy", include_in_schema=False)
+def privacy():
+    return FileResponse(_ROOT / "static" / "privacy.html", media_type="text/html")
+
+
+@app.get("/terms", include_in_schema=False)
+def terms():
+    return FileResponse(_ROOT / "static" / "terms.html", media_type="text/html")
 
 
 @app.get("/health")
@@ -325,3 +349,9 @@ async def export_complete_html(file: UploadFile = File(...)):
         stream, media_type="text/html; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{stem}_full_report.html"'},
     )
+
+
+# Authenticated subscription endpoints are opt-in and fail closed until all
+# private-beta credentials and operator/legal approval are explicitly provided.
+from webapp.saas import router as saas_router
+app.include_router(saas_router)
