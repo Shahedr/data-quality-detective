@@ -108,7 +108,7 @@ def test_vercel_hosts_real_free_uploads_with_explicit_body_limit(monkeypatch):
     assert config["upload_allowed"] is True
     assert config["max_upload_bytes"] == 4 * 1024 * 1024
     response = client.post("/api/analyze", files={
-        "file": ("actual.csv", b"a,b\\n1,2\\n1,2\\n")
+        "file": ("actual.csv", b"a,b\n1,2\n1,2\n")
     })
     assert response.status_code == 200, response.text
     assert response.json()["summary"]["duplicate_rows"] == 1
