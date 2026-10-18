@@ -1,26 +1,13 @@
 # Data Quality Detective SaaS — launch readiness
 
-STATUS: PUBLIC SAMPLE DEMO + MFA-ONLY PRIVATE OWNER DASHBOARD LIVE. CUSTOMER UPLOADS, PUBLIC SAAS SIGNUPS AND CHARGES MUST REMAIN DISABLED UNTIL APPROVED.
+STATUS: PUBLIC SAMPLE DEMO, CUSTOM ADMIN REMOVED. USE THE SUPABASE PROJECT DASHBOARD FOR OPERATOR OVERSIGHT. CUSTOMER UPLOADS, PUBLIC SAAS SIGNUPS AND CHARGES MUST REMAIN DISABLED UNTIL VERIFIED AND APPROVED.
 
-## Verified deployment and owner access (2026-10-18)
-- PR #24 fixed missing FastAPI dependency in Vercel Git-source builds; issue #17 is closed following strict full-application preview tests.
-- PR #25 added a Supabase MFA-gated aggregate dashboard. One identity (verified Auth email with enrolled TOTP) is allowlisted in a `private` schema, and browser roles cannot read any internal tables. Function rejects unauthenticated, non-owner and non-MFA calls.
-- PR #26 added a permanent production public-demo safety smoke. The first run revealed the public alias was still pinned to an old direct deployment; its failure was genuine. The alias was intentionally reassigned to a verified Git-source production deployment and the original failed run was rerun successfully. Separate public-alias GitHub smoke also passed.
-- Public domain `https://data-quality-detective-demo.vercel.app` now serves owner `/admin` with aggregate counts while sample-only public endpoints remain closed to uploaded files and paid checkout. Real-browser MFA owner RPC still requires owner sign-in on this origin; SQL-editor synthetic JWT tests are not a substitute.
-- Vercel `DQD_SAAS_ENABLED=0` and `DQD_SAAS_LAUNCH_APPROVED=0` were independently checked before enabling only admin flags. Uploaded customer files and payments remain disabled.
-- Supabase security advisor warning on the deliberate owner SECDEF RPC is documented in `saas/OWNER_DASHBOARD_SECURITY.md`. Leaked-password protection remains a real separate **WARN** and requires Auth configuration evaluation.
-- Stripe's connected merchant identity and environment have NOT been inspected yet; do not assume a linked or historical merchant belongs to this product.
-
-
-The public sample demo remains a separate upload-free product. The new SaaS endpoints require authentication and two independent environment flags (DQD_SAAS_ENABLED and DQD_SAAS_LAUNCH_APPROVED). Missing required configuration fails closed.
-
-## Provider provisioning (never commit secrets)
-
-1. Supabase: create a project, enable confirmed-email authentication using asymmetric RS256 or ES256 JWT keys, configure exact HTTPS redirect origin. Run the SQL in saas/schema.sql through an authorized SQL editor, confirm RLS, no anon grants, TLS and backup policy. Use a limited-privilege direct PostgreSQL account for the server.
-2. Stripe: create a recurring Pro subscription product/price, configure customer portal and webhook for checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted. Perform test-mode checkout, cancellation, failed payment, event replay and entitlement tests. Use signed webhooks. Do not turn on live charges without explicit operator approval.
-3. Vercel: build from root app.py using FastAPI; core `pyproject.toml` dependencies now include web startup packages to satisfy Git-source Python runtime. Preview and production smoke tests reject placeholder HTML and require real app JSON. Keep all secrets in project environment variables and never in git or client code.
-
-Required environment variables: DQD_SAAS_ENABLED=0; DQD_SAAS_LAUNCH_APPROVED=0; DQD_NEW_STRIPE_ACCOUNT_VERIFIED unset/0; DQD_LIVE_PAYMENTS_APPROVED unset/0; SUPABASE_URL; SUPABASE_ANON_KEY (public); DQD_SAAS_DATABASE_URL (private, sslmode=require); STRIPE_SECRET_KEY; STRIPE_WEBHOOK_SECRET; STRIPE_PRO_PRICE_ID; DQD_SITE_URL (HTTPS); DQD_LEGAL_ENTITY (real registered operator); DQD_PRIVACY_EMAIL (monitored contact).
+## Simplified operator workflow (2026-10-18)
+- The duplicate web-based `/admin` dashboard and browser-accessible owner statistics RPC have been **retired**, including their custom database table and PostgreSQL function. Use the [Supabase project dashboard](https://supabase.com/dashboard/project/uphktngpdrjsnfnveaio) to inspect Auth users, tables, SQL, security advisors and project performance instead. Your existing Supabase Auth user and its MFA factor were NOT deleted.
+- The four existing internal SaaS tables remain RLS protected. The public sample-only application and commercial feature flags are unchanged.
+- Stripe live merchant account was read-only checked: individual US account for the DQD domain; `charges_enabled=false`, `payouts_enabled=false`, `details_submitted=false`, business support email not configured. Do not assume a connected live account means activated merchant status or readiness for charges.
+- Permanent `production-safety-smoke.yml` requires `/admin`, `/admin.js`, `/api/saas/admin/config`, `/api/saas/admin/overview` to remain 404, and all public/private upload and billing gates remain closed.
+- Vercel Git-source issue #17 was fixed by adding required Python imports to `pyproject.toml`. Production requires strict JSON smoke verification after new deployments.
 
 ## Live Stripe protection
 - Application supports `sk_test_` Stripe keys for **future isolated test-mode integration only**. It does not charge or contact Stripe until separately approved customer endpoints are activated.
