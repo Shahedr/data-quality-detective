@@ -132,3 +132,20 @@ def test_admin_overview_returns_aggregates_only(monkeypatch):
     assert response.json()["all_time_analyses"] == 14
     assert response.json()["read_only"] is True
     assert "email" not in str(response.json()).lower()
+
+
+
+def test_owner_javascript_syntax_and_disabled_sdk_gate():
+    import shutil
+    import subprocess
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[1] / "webapp" / "static" / "admin.js"
+    text = script.read_text(encoding="utf-8")
+    assert 'if(!cfg.enabled)' in text
+    assert 'await new Promise' in text
+    assert 'client.auth.mfa.challengeAndVerify' in text
+    assert '!/^\\d{6}$/.test(code)' in text
+    if shutil.which("node"):
+        result = subprocess.run(["node", "--check", str(script)],
+                                capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, result.stderr
