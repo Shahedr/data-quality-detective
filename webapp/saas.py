@@ -60,7 +60,8 @@ ACTIVE_STATUSES = {"active", "trialing"}
 
 
 def enabled():
-    return os.getenv("DQD_SAAS_ENABLED", "").strip() == "1"
+    return (os.getenv("DQD_SAAS_ENABLED", "").strip() == "1"
+            and os.getenv("DQD_SAAS_LAUNCH_APPROVED", "").strip() == "1")
 
 
 def _required_env():
@@ -73,7 +74,7 @@ def _required_env():
 
 
 def ready():
-    """Return False, never a partially open service, for absent configuration."""
+    """No customer signup or uploads without full operator approval."""
     return enabled() and _required_env()
 
 
@@ -220,6 +221,18 @@ async def read_upload(file):
         await file.close()
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "Private beta uploads cannot exceed 2 MiB.")
+    # Defense in depth; reject highly compressed workbook bombs more tightly
+    # than the local/offline analyzer and disallow unnecessarily large sheets.
+    if Path(name).suffix.lower() in {".xlsx", ".xlsm"}:
+        from zipfile import ZipFile, BadZipFile
+        import io
+        try:
+            with ZipFile(io.BytesIO(data)) as archive:
+                entries = archive.infolist()
+                if len(entries) > 250 or sum(x.file_size for x in entries) > 20 * 1024 * 1024:
+                    raise HTTPException(413, "Workbook expansion exceeds private-beta limits.")
+        except BadZipFile:
+            raise HTTPException(422, "Invalid workbook archive.") from None
     validate_upload(name, data)
     return name, data
 
