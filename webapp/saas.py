@@ -67,7 +67,7 @@ def _required_env():
     names = (
         "SUPABASE_URL", "SUPABASE_ANON_KEY", "DQD_SAAS_DATABASE_URL",
         "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRO_PRICE_ID",
-        "DQD_SITE_URL",
+        "DQD_SITE_URL", "DQD_LEGAL_ENTITY", "DQD_PRIVACY_EMAIL",
     )
     return all(os.getenv(key) for key in names)
 
@@ -234,6 +234,8 @@ def public_configuration():
         "plans": {"free": FREE_MONTHLY_ANALYSES, "pro": PRO_MONTHLY_ANALYSES},
         "max_upload_bytes": MAX_UPLOAD_BYTES,
         "no_macro_execution": True,
+        "legal_entity": os.getenv("DQD_LEGAL_ENTITY") if ready() else None,
+        "privacy_contact": os.getenv("DQD_PRIVACY_EMAIL") if ready() else None,
     }
 
 
