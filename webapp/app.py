@@ -6,16 +6,18 @@ Never execute arbitrary Excel macros or external workbook connections.
 """
 
 import json
+import os
 import re
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from dqdetect.profiler import profile_dataframe
 from dqdetect.report import render_html, render_json
 from webapp.excel import inspect_excel
 from webapp.export import full_html_chunks, full_workbook_html_chunks
+from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 from webapp.vba import audit_vba
 from webapp.xlsx_export import build_review_workbook, stream_file_chunks
@@ -34,9 +36,38 @@ app = FastAPI(
 _ROOT = Path(__file__).resolve().parent
 
 
+def _public_demo_only():
+    """True ONLY for explicitly configured public sample-only deployments."""
+    return os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
+
+
+def _sample_bytes():
+    # Bundled, known example content; demo endpoints never read user uploads.
+    return (_ROOT / "sample.csv").read_bytes()
+
+
+def _review_xlsx_for_frames(frames, reviews, filename):
+    profiles = {
+        tab: profile_dataframe(frame, source_name=filename)
+        for tab, frame in frames.items()
+    }
+    return build_review_workbook(frames, reviews, profiles, filename)
+
+
+
+
 @app.middleware("http")
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    if _public_demo_only() and request.url.path in {
+        "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx"
+    }:
+        response = JSONResponse(
+            {"detail": "Public preview accepts no uploads. Use the bundled sample; "
+             "run the local app to analyze your own workbooks."},
+            status_code=403,
+        )
+    else:
+        response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Frame-Options"] = "DENY"
@@ -58,6 +89,58 @@ def spreadsheet_script():
 @app.get("/health")
 def health():
     return {"status": "ok", "product": "Data Quality Detective", "stage": "preview"}
+
+
+@app.get("/api/config")
+def config():
+    public = _public_demo_only()
+    return {
+        "mode": "public_demo" if public else "local",
+        "upload_allowed": not public,
+        "macro_execution_via_web": False,
+        "public_demo": public,
+    }
+
+
+@app.get("/api/demo/analyze")
+def demo_analyze():
+    if not _public_demo_only():
+        raise HTTPException(404, "Public demo endpoint is disabled locally.")
+    return JSONResponse(analyze_bytes("sample.csv", _sample_bytes()))
+
+
+@app.get("/api/demo/rows")
+def demo_rows(page: int = Query(1, ge=1), issue: str = Query("all")):
+    if not _public_demo_only():
+        raise HTTPException(404, "Public demo endpoint is disabled locally.")
+    return JSONResponse(inspect_bytes("sample.csv", _sample_bytes(), page=page, issue=issue))
+
+
+@app.get("/api/demo/export/html")
+def demo_export_html():
+    if not _public_demo_only():
+        raise HTTPException(404, "Public demo endpoint is disabled locally.")
+    frames, _ = parse_sheets("sample.csv", _sample_bytes())
+    df = next(iter(frames.values()))
+    profile = profile_dataframe(df, source_name="sample.csv")
+    return StreamingResponse(
+        full_html_chunks(profile, df), media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="sample_full_report.html"'},
+    )
+
+
+@app.get("/api/demo/export/xlsx")
+def demo_export_xlsx():
+    if not _public_demo_only():
+        raise HTTPException(404, "Public demo endpoint is disabled locally.")
+    frames, _ = parse_sheets("sample.csv", _sample_bytes())
+    output = _review_xlsx_for_frames(frames, {}, "sample.csv")
+    return StreamingResponse(
+        stream_file_chunks(output),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="sample_audit_review.xlsx"'},
+    )
+
 
 
 def _read_dataset(name: str, data: bytes, sheet=None, all_reviews=False):
