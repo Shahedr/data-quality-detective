@@ -1,8 +1,8 @@
-"""Local browser workbook auditor built on the dqdetect profiling engine.
+"""Free web interface to the dqdetect quality profiler.
 
-Prototype only. Do not expose to the public internet without an independent
-security review, authentication, upload isolation, and resource controls.
-Never execute arbitrary Excel macros or external workbook connections.
+CSV/Excel inputs are parsed as data only; macros, formulas and external Excel
+connections are never executed by the web service. The public service is an
+untrusted-file processing endpoint with strict input limits.
 """
 
 import json
@@ -37,8 +37,8 @@ _ROOT = Path(__file__).resolve().parent
 
 def _public_demo_only():
     """True ONLY for explicitly configured public sample-only deployments."""
-    # Fail closed on Vercel even if project variables are misconfigured.
-    return bool(os.environ.get("VERCEL")) or os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
+    # Optional sample-only override for staging / emergency shutdown.
+    return os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
 
 
 def _sample_bytes():
@@ -56,71 +56,33 @@ def _review_xlsx_for_frames(frames, reviews, filename):
 
 
 
-def _saas_gate_response(request):
-    """Reject unapproved/authless/mis-sized SaaS uploads BEFORE multipart parsing.
-
-    This avoids Starlette creating temporary files from anonymous uploads. A
-    body-size cap at the hosting ingress is still required: Content-Length
-    alone cannot stop a malicious client that lies about streamed bytes.
-    """
-    path = request.url.path
-    # No separate admin webapp; use Supabase's own project dashboard.
-    if path.startswith("/api/saas/admin/"):
-        return JSONResponse({"detail": "Not found."}, status_code=404)
-    if not path.startswith("/api/saas/") or path == "/api/saas/config":
-        return None
-
-    import importlib.util
-    if not all(importlib.util.find_spec(name) is not None for name in ("jwt", "psycopg", "stripe")):
-        return JSONResponse({"detail": "Private beta is not available."}, status_code=503)
-
-    from fastapi import HTTPException
-    from webapp.saas import ready, _authenticate_bearer, MAX_UPLOAD_BYTES, MAX_WEBHOOK_BYTES
-    if not ready():
-        return JSONResponse({"detail": "Private beta is not enabled."}, status_code=503)
-
-    if request.method == "POST" and path in {
-        "/api/saas/analyze", "/api/saas/rows",
-        "/api/saas/export/html", "/api/saas/export/xlsx",
-        "/api/saas/billing/webhook",
-    }:
-        limit = (MAX_WEBHOOK_BYTES if path.endswith("/webhook") else MAX_UPLOAD_BYTES + 128 * 1024)
-        length = request.headers.get("content-length", "")
-        # A valid, bounded Content-Length is required before accepting the
-        # request body; do not allow unauthenticated chunked multipart traffic.
-        if not length.isascii() or not length.isdecimal():
-            return JSONResponse({"detail": "Content-Length is required."}, status_code=411)
-        if int(length) > limit:
-            return JSONResponse({"detail": "Request exceeds the upload limit."}, status_code=413)
-
-    if path == "/api/saas/billing/webhook":
-        return None  # This endpoint uses verified Stripe signatures instead.
-    if request.method != "GET" and request.method != "POST" and request.method != "DELETE":
-        return None
-    header = request.headers.get("authorization", "")
-    match = re.fullmatch(r"Bearer ([A-Za-z0-9._-]+)", header)
-    if not match:
-        return JSONResponse({"detail": "Sign in is required."}, status_code=401)
-    try:
-        _authenticate_bearer(match.group(1))
-    except HTTPException as exc:
-        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-    return None
+# Vercel's request-body limit is lower than the local 10 MB file limit.
+# Cap the full multipart request BEFORE Starlette spools uploaded bytes to disk.
+HOSTED_MAX_FILE_BYTES = 4 * 1024 * 1024
+HOSTED_MAX_REQUEST_BYTES = HOSTED_MAX_FILE_BYTES + 64 * 1024
+_UPLOAD_PATHS = frozenset({
+    "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx"
+})
 
 
 @app.middleware("http")
 async def security_headers(request, call_next):
-    gate = _saas_gate_response(request)
-    if gate is not None:
-        response = gate
-    elif _public_demo_only() and request.url.path in {
-        "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx"
-    }:
+    path = request.url.path
+    if path in _UPLOAD_PATHS and request.method == "POST" and _public_demo_only():
         response = JSONResponse(
-            {"detail": "Public preview accepts no uploads. Use the bundled sample; "
-             "run the local app to analyze your own workbooks."},
+            {"detail": "Sample-only mode is enabled; uploads are unavailable."},
             status_code=403,
         )
+    elif path in _UPLOAD_PATHS and request.method == "POST" and os.getenv("VERCEL"):
+        length = request.headers.get("content-length", "")
+        if not length.isascii() or not length.isdecimal():
+            response = JSONResponse({"detail": "Content-Length is required."}, status_code=411)
+        elif int(length) > HOSTED_MAX_REQUEST_BYTES:
+            response = JSONResponse(
+                {"detail": "Public web uploads are limited to 4 MB."}, status_code=413
+            )
+        else:
+            response = await call_next(request)
     else:
         response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -128,12 +90,12 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if request.url.path in {"/app", "/privacy", "/terms", "/product"}:
+    if path == "/":
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; "
-            "script-src 'self' https://cdn.jsdelivr.net; "
-            "style-src 'self'; "
-            "connect-src 'self' https://*.supabase.co wss://*.supabase.co; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "connect-src 'self'; "
             "img-src 'self' data:; "
             "base-uri 'none'; object-src 'none'; "
             "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
@@ -153,47 +115,18 @@ def spreadsheet_script():
     )
 
 
-@app.get("/product", include_in_schema=False)
-def public_product_page():
-    return FileResponse(_ROOT / "static" / "product.html", media_type="text/html")
-
-
-@app.get("/app", include_in_schema=False)
-def private_workspace():
-    return FileResponse(_ROOT / "static" / "saas.html", media_type="text/html")
-
-
-@app.get("/saas.js", include_in_schema=False)
-def private_workspace_script():
-    return FileResponse(_ROOT / "static" / "saas.js", media_type="application/javascript")
-
-
-@app.get("/saas.css", include_in_schema=False)
-def private_workspace_styles():
-    return FileResponse(_ROOT / "static" / "saas.css", media_type="text/css")
-
-
-@app.get("/privacy", include_in_schema=False)
-def privacy():
-    return FileResponse(_ROOT / "static" / "privacy.html", media_type="text/html")
-
-
-@app.get("/terms", include_in_schema=False)
-def terms():
-    return FileResponse(_ROOT / "static" / "terms.html", media_type="text/html")
-
-
 @app.get("/health")
 def health():
-    return {"status": "ok", "product": "Data Quality Detective", "stage": "preview"}
+    return {"status": "ok", "product": "Data Quality Detective", "stage": "free"}
 
 
 @app.get("/api/config")
 def config():
     public = _public_demo_only()
     return {
-        "mode": "public_demo" if public else "local",
+        "mode": "public_demo" if public else ("free_web" if os.getenv("VERCEL") else "local"),
         "upload_allowed": not public,
+        "max_upload_bytes": HOSTED_MAX_FILE_BYTES if os.getenv("VERCEL") else MAX_FILE_BYTES,
         "macro_execution_via_web": False,
         "public_demo": public,
     }
@@ -346,6 +279,8 @@ async def _get_upload(file):
         data = await file.read(MAX_FILE_BYTES + 1)
     finally:
         await file.close()
+    if os.getenv("VERCEL") and len(data) > HOSTED_MAX_FILE_BYTES:
+        raise HTTPException(413, "Public web uploads are limited to 4 MB.")
     return filename, data
 
 
@@ -421,18 +356,3 @@ async def export_complete_html(file: UploadFile = File(...)):
     )
 
 
-# SaaS extras are optional on existing local Windows installations.
-# When absent, keep the original offline workbook app fully functional.
-# Hosting must install .[web,saas] before enabling the private beta.
-import importlib.util as _importlib_util
-if all(_importlib_util.find_spec(name) is not None for name in ("jwt", "psycopg", "stripe")):
-    from webapp.saas import router as saas_router
-    app.include_router(saas_router)
-else:
-    if os.getenv("DQD_SAAS_ENABLED") == "1":
-        raise RuntimeError("SaaS was enabled without installing [saas] dependencies.")
-
-    @app.get("/api/saas/config")
-    def saas_not_installed():
-        return {"enabled": False, "plans": {}, "max_upload_bytes": 0,
-                "no_macro_execution": True}
