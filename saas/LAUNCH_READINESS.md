@@ -28,6 +28,13 @@ Required environment variables: DQD_SAAS_ENABLED=0; DQD_SAAS_LAUNCH_APPROVED=0; 
 - Verify via the actual new Stripe **business** account, not the user's unrelated historical merchant. Confirm test-mode account identity, configured price and webhook signing key under private provider settings. Do not send keys through chat/GitHub.
 - Merchant approval and the correct price cannot be inferred from a connected Stripe app alone.
 
+## Current legal and merchant prerequisites (official sources; not legal advice)
+- Stripe's [merchant website checklist](https://support.stripe.com/embedded-connect/questions/information-required-on-your-business-website-to-process-payments) calls for a complete product description, **transaction currency**, **support contact details**, **refund/return policies**, applicable legal restrictions, a privacy notice and payment-card security information. The demo is descriptive but **does not yet meet all merchant-facing disclosures** because the actual operator and policy decisions are not finalized.
+- Federal recurring-subscription rules must be researched by applicable jurisdiction. The [March 2026 Federal Register record](https://www.govinfo.gov/content/pkg/FR-2026-03-13/html/2026-04952.htm) confirms the 2024 FTC amended negative-option/“click-to-cancel” rule was **vacated on July 8, 2025**. Do not describe the vacated amendment as currently enforceable. Other federal statutes (including ROSCA), existing rules and relevant state automatic-renewal laws still require counsel review for disclosures, consent and cancellation.
+- The [USPTO requires a comprehensive confusing-similarity and common-law clearance search](https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks) before committing to a commercial brand. User screenshots identified a live DATA DETECTIVE filing/registration and another CSV analyzer displaying the exact Data Quality Detective name. They are risk leads, **not proof of trademark infringement or senior rights**. Branding is on HOLD for commercial rollout until owner selects a candidate and clearance is reviewed.
+- Privacy and terms pages are correctly labeled *draft*. A complete retention/processor/log review and actual legal owner, monitored support, refunds and cancellation policy are needed before customers can subscribe.
+- Stripe's [own subscription policy](https://stripe.com/legal/subscription-policy) governs Stripe's fees to its users; **do not copy it as Data Quality Detective's customer subscription agreement**.
+
 ## Mandatory release checklist
 
 - [ ] Complete true operator identity, address, privacy contact, payment cancellation and refund terms. Replace draft Privacy and Terms informational pages with legal-review-approved contracts.
