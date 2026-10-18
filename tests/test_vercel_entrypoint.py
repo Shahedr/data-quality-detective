@@ -19,9 +19,11 @@ def test_vercel_entrypoint_reuses_full_application_and_routes(monkeypatch):
     assert client.get("/health").status_code == 200
     config = client.get("/api/config")
     assert config.status_code == 200
-    assert config.json()["mode"] == "public_demo"
-    assert client.get("/api/demo/analyze").json()["summary"]["rows"] == 12
+    assert config.json()["mode"] == "free_web"
+    assert config.json()["upload_allowed"] is True
     response = client.post(
-        "/api/analyze", files={"file": ("private.xlsm", b"unsafe-input")}
+        "/api/analyze", files={"file": ("actual.csv", b"x\\nhello\\n")}
     )
-    assert response.status_code == 403
+    assert response.status_code == 200, response.text
+    assert response.json()["summary"]["rows"] == 1
+    assert client.get("/api/saas/config").status_code == 404
