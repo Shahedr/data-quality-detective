@@ -8,6 +8,7 @@ import pytest
 from openpyxl import Workbook
 from webapp.excel_native import (
     NativeExcelError, TRUST_PHRASE, _render_html, run_native_audit,
+    _prompt_to_approve_macro,
 )
 
 
@@ -145,7 +146,7 @@ def test_macro_uses_trust_center_ui_and_explicit_qualified_name(tmp_path):
     result = run_native_audit(
         src, tmp_path / "reports", mode="macro",
         macro_name="Module1.Review", confirmation=TRUST_PHRASE,
-        dispatch=lambda _: excel,
+        dispatch=lambda _: excel, approve_macro=lambda _: True,
     )
     assert result["excel_automation"] == "completed"
     assert result["macro_executed"] is True
@@ -163,7 +164,7 @@ def test_trust_center_macro_block_is_recorded_as_failed_not_success(tmp_path):
     result = run_native_audit(
         src, tmp_path / "reports", mode="macro",
         macro_name="Module1.Review", confirmation=TRUST_PHRASE,
-        dispatch=lambda _: excel,
+        dispatch=lambda _: excel, approve_macro=lambda _: True,
     )
     assert result["excel_automation"] == "failed"
     assert result["macro_executed"] is False
@@ -218,3 +219,58 @@ def test_desktop_gui_wrapper_imports_without_windows_runtime():
     import webapp.excel_desktop as desktop
     assert callable(desktop.launch)
     assert callable(desktop.main)
+
+
+def test_macro_interactive_checkpoint_requires_exact_RUN_and_handles_eof(tmp_path):
+    copy = tmp_path / "trusted.xlsm"
+    copy.write_bytes(b"example")
+    assert _prompt_to_approve_macro(copy, input_fn=lambda _: "RUN") is True
+    assert _prompt_to_approve_macro(copy, input_fn=lambda _: "no") is False
+    assert _prompt_to_approve_macro(copy, input_fn=lambda _: "RUN IT") is False
+
+    def raises_eof(_):
+        raise EOFError()
+    assert _prompt_to_approve_macro(copy, input_fn=raises_eof) is False
+
+
+def test_rejected_checkpoint_never_attempts_macro_and_exits_excel(tmp_path):
+    src = workbook_file(tmp_path, "trusted.xlsm")
+    excel = FakeExcel({"Orders": {"B2": 6}})
+    result = run_native_audit(
+        src, tmp_path / "reports", mode="macro",
+        macro_name="Module1.Review", confirmation=TRUST_PHRASE,
+        dispatch=lambda _: excel, approve_macro=lambda _: False,
+    )
+    assert result["excel_automation"] == "failed"
+    assert result["macro_executed"] is False
+    assert result["macro_approval_confirmed"] is False
+    assert excel.macro is None
+    assert excel.Workbooks.workbook.save_called is False
+    assert excel.Workbooks.workbook.closed is True
+    assert excel.quitted is True
+    assert "Cancelled at the macro approval checkpoint" in result["warnings"][0]
+
+
+def test_macro_checkpoint_occurs_after_excel_copy_opened(tmp_path):
+    src = workbook_file(tmp_path, "trusted.xlsm")
+    excel = FakeExcel({"Orders": {"B2": 6}})
+    review_path = []
+
+    def approve(copy):
+        assert excel.Workbooks.paths[0] == copy
+        assert excel.Visible is True
+        assert excel.AutomationSecurity == 2
+        assert src.read_bytes() == copy.read_bytes()
+        review_path.append(copy)
+        return True
+
+    result = run_native_audit(
+        src, tmp_path / "reports", mode="macro",
+        macro_name="Module1.Review", confirmation=TRUST_PHRASE,
+        dispatch=lambda _: excel, approve_macro=approve,
+    )
+    assert result["excel_automation"] == "completed"
+    assert result["macro_approval_confirmed"] is True
+    assert len(review_path) == 1
+    assert result["original_unchanged"] is True
+    assert excel.macro == "'trusted.xlsm'!Module1.Review"
