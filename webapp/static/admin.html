@@ -14,7 +14,10 @@
 <label>Email<input id="email" type="email" autocomplete="email"></label>
 <label>Password<input id="password" type="password" autocomplete="current-password"></label>
 <div class="row"><button id="signin">Sign in</button></div>
-<p class="muted">No credentials are stored by this page beyond the Supabase Auth session.</p></section>
+<p>Or sign in without a password using the email address above.</p>
+<div class="row"><button id="emailLink" type="button" class="secondary">Email me a one-time sign-in link</button></div>
+<p class="muted">The link will work only with an existing Supabase Auth user and uses this preview URL as the return address. Supabase must authorize that URL under Authentication → URL Configuration.</p>
+<p class="muted">Never share your password, email login link, or MFA code. Your browser holds its normal Supabase Auth session; no new customer signup is enabled.</p></section>
 <section id="mfa" class="panel hidden"><h2>Multi-factor authentication required</h2>
 <p id="mfaMessage">A verified authenticator-app code is required for owner access.</p>
 <img id="qr" class="hidden" width="185" height="185" alt="QR code to enroll an authenticator app">
