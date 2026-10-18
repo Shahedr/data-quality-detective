@@ -78,20 +78,33 @@ def ready():
     return enabled() and _required_env()
 
 
-def admin_ready():
-    """Independent, explicitly opted-in, read-only owner console.
-
-    This must not rely on or enable the customer SaaS launch switches.
-    """
+def _admin_owner_configured():
+    """Validate the private immutable owner UUID; never expose it in public config."""
     import uuid
     try:
         allowed = str(uuid.UUID(os.environ["DQD_ADMIN_USER_ID"]))
     except (KeyError, ValueError, AttributeError):
         return False
-    return (allowed != str(uuid.UUID(int=0))
-            and os.getenv("DQD_ADMIN_ENABLED", "") == "1"
+    return allowed != str(uuid.UUID(int=0))
+
+
+def admin_auth_ready():
+    """Owner login/MFA setup only, independent of customer SaaS and DB access.
+
+    The optional setup flag allows an invited owner to enroll MFA *before*
+    database credentials or the read-only admin overview are configured.
+    """
+    return (_admin_owner_configured()
+            and (os.getenv("DQD_ADMIN_SETUP_ENABLED") == "1"
+                 or os.getenv("DQD_ADMIN_ENABLED") == "1")
             and bool(os.getenv("SUPABASE_URL"))
-            and bool(os.getenv("SUPABASE_ANON_KEY"))
+            and bool(os.getenv("SUPABASE_ANON_KEY")))
+
+
+def admin_ready():
+    """Read-only owner metrics require a separate explicit database gate."""
+    return (admin_auth_ready()
+            and os.getenv("DQD_ADMIN_ENABLED", "") == "1"
             and bool(os.getenv("DQD_SAAS_DATABASE_URL")))
 
 
@@ -292,11 +305,12 @@ def public_configuration():
 @router.get("/admin/config")
 def admin_configuration():
     """Only public Auth configuration. No user IDs, database credentials or keys."""
-    active = admin_ready()
+    auth_enabled = admin_auth_ready()
     return {
-        "enabled": active,
-        "supabase_url": os.getenv("SUPABASE_URL") if active else None,
-        "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY") if active else None,
+        "enabled": auth_enabled,
+        "overview_enabled": admin_ready(),
+        "supabase_url": os.getenv("SUPABASE_URL") if auth_enabled else None,
+        "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY") if auth_enabled else None,
         "mfa_required": True,
         "read_only": True,
     }
