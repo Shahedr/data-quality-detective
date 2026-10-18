@@ -54,6 +54,26 @@ The existing `report_html` field in the analysis API continues to contain a
 50-flagged-row preview for backward compatibility; the **Download** button
 uses the full export endpoint.
 
+### Download annotated Excel audit (new)
+
+The **Download Excel audit** button generates a separate, macro-free
+`*_audit_review.xlsx` file, with one tab for each accepted worksheet, colored
+issue cells, an **Issue Register** with original cell references, and a workbook
+overview showing totals and warnings. It never changes the uploaded workbook.
+The original formulas, executable VBA, Excel tables, dropdown controls,
+styles, and hidden-sheet state are **not reproduced**: all accepted worksheet
+values are exported as literal text snapshots. The export includes hidden
+source sheets as visible review copies, which may expose sensitive data if you
+share it. **Never share it without checking those sheets first.**
+
+Because Excel formulas are not recalculated in the browser, formula cells
+with no saved cached result remain blank in this separate review workbook.
+Use the supervised Windows Excel-native recalculation workflow for fresh
+formula results. The XLSX review export caps source grid size at **1 million
+cells**, with up to **100,000 issue register entries**; larger jobs should use
+the complete HTML export. All exported cell content is forced to literal text,
+including strings beginning with `=`, to avoid spreadsheet formula injection.
+
 For Excel files (.xlsx and .xlsm), the browser reads cell values without
 executing VBA code or saving over the workbook. In supported Excel data
 validation **literal lists** (for example "Open,Closed") and simple
