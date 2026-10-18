@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   audit-dependencies:
+    # Historical dev-inclusive profile, retained for comparisons.
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -33,4 +34,41 @@ jobs:
           path: |
             third_party_licenses.json
             dependency_audit.json
+          retention-days: 30
+
+  audit-hosted-python-profile:
+    # Audit the .[web,saas] runtime dependencies without installing dev tools
+    # into the Python environment being inspected. This still does NOT attest
+    # to the exact wheels installed inside a Vercel deployed function.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install isolated hosted Python profile
+        run: |
+          python -m venv .hosted-audit
+          .hosted-audit/bin/python -m pip install --upgrade 'setuptools>=83.0.0'
+          .hosted-audit/bin/python -m pip install '.[web,saas]'
+          .hosted-audit/bin/python -m pip check
+          .hosted-audit/bin/python -m pip freeze --all > hosted_python_freeze.txt
+      - name: Install audit tools OUTSIDE isolated runtime
+        run: python -m pip install 'pip-licenses>=5,<7' 'pip-audit>=2.7,<4'
+      - name: Inventory licenses for hosted runtime only
+        run: |
+          pip-licenses --python=.hosted-audit/bin/python --with-urls --format=json --output-file=hosted_third_party_licenses.json
+      - name: Audit installed hosted runtime for known advisories
+        run: |
+          SITE_PACKAGES=$(.hosted-audit/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          pip-audit --path "$SITE_PACKAGES" --format=json --output hosted_dependency_audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-python-license-security-${{ github.run_id }}
+          path: |
+            hosted_python_freeze.txt
+            hosted_third_party_licenses.json
+            hosted_dependency_audit.json
           retention-days: 30
