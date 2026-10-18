@@ -22,7 +22,7 @@ def test_vercel_entrypoint_reuses_full_application_and_routes(monkeypatch):
     assert config.json()["mode"] == "free_web"
     assert config.json()["upload_allowed"] is True
     response = client.post(
-        "/api/analyze", files={"file": ("actual.csv", b"x\\nhello\\n")}
+        "/api/analyze", files={"file": ("actual.csv", b"x\nhello\n")}
     )
     assert response.status_code == 200, response.text
     assert response.json()["summary"]["rows"] == 1
