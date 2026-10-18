@@ -9,6 +9,18 @@ Before investing in ads, paid subscriptions or a logo: search exact and phonetic
 USPTO authoritative guidance: https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks
 USPTO Trademark Search: https://tmsearch.uspto.gov/
 
+## Preliminary public trademark screening — not clearance
+A preliminary public web search on October 17–18, 2026 for the exact phrase Data Quality Detective did not furnish a verified USPTO registry result or sufficient evidence to declare the phrase available or unavailable. This does NOT establish that there are no conflicting trademarks. The USPTO requires checking confusingly similar words and common-law use: https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks . A qualified reviewer must examine the live registry, state filings, relevant software/data services and international markets before asserting brand clearance.
+
+## Preliminary third-party license verification
+The Stripe Python SDK and Supabase JS client source repositories identify their respective licenses as MIT:
+https://github.com/stripe/stripe-python/blob/master/LICENSE
+https://github.com/supabase/supabase-js/blob/master/LICENSE
+PyPI identifies psycopg and psycopg-binary as LGPL-3.0-only:
+https://pypi.org/project/psycopg/
+https://pypi.org/project/psycopg-binary/
+These are source observations, not a legal assessment of deployed transitive licenses, license obligations or copyright provenance. Keep notices and review actual release artifacts.
+
 ## License and copyright provenance
 
 Source repository LICENSE is MIT with copyright 2026 Shahed; this covers only code that the copyright holder is actually entitled to license. A license file does not clear externally incorporated artwork, third-party code, fonts, datasets, copy, platform trademarks or generated material.
