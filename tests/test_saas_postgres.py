@@ -24,6 +24,10 @@ def test_postgres_real_quota_atomicity_and_plan_transitions(monkeypatch):
         pytest.skip("Refuse real-db tests outside disposable GitHub CI Postgres")
     root = __import__("pathlib").Path(__file__).resolve().parents[1]
     schema = (root / "saas" / "schema.sql").read_text(encoding="utf-8")
+    # Vanilla PostgreSQL in GitHub CI has no Supabase-created anon and
+    # authenticated roles. Keep the RLS DDL, skip only Supabase role revokes.
+    schema = "\n".join(line for line in schema.splitlines()
+                       if not line.startswith("REVOKE ALL ON "))
     with psycopg.connect(URL) as conn:
         with conn.cursor() as cur:
             cur.execute(schema)
