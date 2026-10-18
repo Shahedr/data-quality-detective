@@ -16,7 +16,7 @@ jobs:
           import json, time
           from urllib.request import Request,urlopen
           from urllib.error import HTTPError
-          origin='https://data-quality-detective-demo-7c88mcp42-shahedr2744-1751.vercel.app'
+          origin='https://data-quality-detective-demo-aaikjqjjy-shahedr2744-1751.vercel.app'
           def get(path,method='GET',data=None):
               req=Request(origin+path,method=method,data=data)
               try:
