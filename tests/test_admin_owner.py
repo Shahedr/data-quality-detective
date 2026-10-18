@@ -240,3 +240,76 @@ def test_owner_email_validation_accepts_real_email_and_rejects_malformed():
         capture_output=True, text=True, timeout=15
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_supabase_rpc_owner_dashboard_is_independently_gated(monkeypatch):
+    """No DB URL and no customer signup are needed for owner-only MFA aggregates."""
+    owner = str(uuid.uuid4())
+    monkeypatch.setenv("DQD_ADMIN_USER_ID", owner)
+    monkeypatch.setenv("DQD_ADMIN_SETUP_ENABLED", "1")
+    monkeypatch.setenv("DQD_ADMIN_METRICS_RPC_ENABLED", "1")
+    monkeypatch.setenv("DQD_ADMIN_ENABLED", "0")
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_publishable_test_public")
+    monkeypatch.delenv("DQD_SAAS_DATABASE_URL", raising=False)
+    monkeypatch.setenv("DQD_SAAS_ENABLED", "0")
+    monkeypatch.setenv("DQD_SAAS_LAUNCH_APPROVED", "0")
+    assert saas.admin_rpc_ready() is True
+    assert saas.admin_ready() is False
+    assert saas.ready() is False
+    cfg = client.get("/api/saas/admin/config").json()
+    assert cfg["enabled"] is True
+    assert cfg["overview_enabled"] is True
+    assert cfg["overview_source"] == "supabase_rpc"
+    assert owner not in str(cfg)
+    assert "DATABASE_URL" not in str(cfg)
+    assert client.get("/api/saas/admin/overview").status_code == 503
+    assert client.get("/api/saas/config").json()["enabled"] is False
+    assert client.post("/api/saas/analyze",
+                       files={"file": ("bad.csv", b"a\n1\n")}).status_code == 503
+    assert client.post("/api/saas/billing/checkout").status_code == 503
+
+
+def test_owner_dashboard_rpc_fails_closed_if_no_identity(monkeypatch):
+    monkeypatch.setenv("DQD_ADMIN_METRICS_RPC_ENABLED", "1")
+    monkeypatch.setenv("DQD_ADMIN_SETUP_ENABLED", "1")
+    monkeypatch.delenv("DQD_ADMIN_USER_ID", raising=False)
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_publishable_test_public")
+    assert saas.admin_rpc_ready() is False
+    cfg = client.get("/api/saas/admin/config").json()
+    assert cfg["overview_enabled"] is False
+    assert cfg["overview_source"] is None
+
+
+def test_owner_dashboard_sql_requires_jwt_mfa_allowlist_and_restricted_grants():
+    from pathlib import Path
+    schema = (Path(__file__).resolve().parents[1] /
+              "saas" / "owner_dashboard_rpc.sql").read_text(encoding="utf-8")
+    assert "SECURITY DEFINER" in schema
+    assert "SET search_path = ''" in schema
+    assert "auth.uid()" in schema
+    assert "auth.jwt() ->> 'aal' IS DISTINCT FROM 'aal2'" in schema
+    assert "private.dqd_admin_owners" in schema
+    assert "REVOKE ALL ON FUNCTION public.dqd_owner_overview()" in schema
+    assert "GRANT EXECUTE ON FUNCTION public.dqd_owner_overview() TO authenticated;" in schema
+    assert "REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;" in schema
+    assert "WHERE user_id = requesting_user" in schema
+    assert "EXECUTE format(" not in schema
+
+
+def test_owner_dashboard_browser_sends_rpc_and_never_inlines_sql_keys():
+    from pathlib import Path
+    static = Path(__file__).resolve().parents[1] / "webapp" / "static"
+    js = (static / "admin.js").read_text(encoding="utf-8")
+    html = (static / "admin.html").read_text(encoding="utf-8")
+    assert 'client.rpc("dqd_owner_overview")' in js
+    assert 'cfg.overview_source==="supabase_rpc"' in js
+    assert 'info.read_only!==true' in js
+    assert 'body.replaceChildren()' in js
+    assert 'label.textContent=' in js
+    assert 'count.textContent=' in js
+    assert "<style>" not in html
+    assert 'id="dailyActivity"' in html
+    assert 'id="monthlyActivity"' in html
+    assert 'id="signout"' in html
