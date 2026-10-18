@@ -1,13 +1,17 @@
 """Vercel root-level FastAPI detection must use the real application."""
 
-import importlib
+import importlib.util
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 
 def test_vercel_entrypoint_reuses_full_application_and_routes(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
-    entrypoint = importlib.import_module("app")
+    path = Path(__file__).resolve().parents[1] / "app.py"
+    spec = importlib.util.spec_from_file_location("dqd_vercel_entry", path)
+    entrypoint = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(entrypoint)
     from webapp.app import app as original
     assert entrypoint.app is original
     client = TestClient(entrypoint.app)
