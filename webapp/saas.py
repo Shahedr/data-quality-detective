@@ -73,9 +73,25 @@ def _required_env():
     return all(os.getenv(key) for key in names)
 
 
+def _payment_environment_approved():
+    """Fail closed for live Stripe keys even if both SaaS switches were enabled.
+
+    TEST keys cannot charge real cards. LIVE keys additionally require two
+    independent verified-business and live-payments approval flags. No Stripe
+    network call happens inside this configuration check.
+    """
+    secret = os.getenv("STRIPE_SECRET_KEY", "").strip()
+    if secret.startswith("sk_test_"):
+        return True
+    if secret.startswith("sk_live_"):
+        return (os.getenv("DQD_NEW_STRIPE_ACCOUNT_VERIFIED") == "1"
+                and os.getenv("DQD_LIVE_PAYMENTS_APPROVED") == "1")
+    return False
+
+
 def ready():
-    """No customer signup or uploads without full operator approval."""
-    return enabled() and _required_env()
+    """Customer signup/uploads/payments need explicit independent approvals."""
+    return enabled() and _required_env() and _payment_environment_approved()
 
 
 def _admin_owner_configured():
