@@ -75,7 +75,7 @@
     try{
       if(!factorId)throw Error("Enroll or select an authenticator first.");
       const code=$("code").value.trim();
-      if(!/^\\d{6}$/.test(code))throw Error("Enter a six-digit code.");
+      if(!/^\d{6}$/.test(code))throw Error("Enter a six-digit code.");
       const {error}=await client.auth.mfa.challengeAndVerify({factorId,code});
       if(error)throw error;
       $("code").value="";$("qr").removeAttribute("src");show("qr",false);
