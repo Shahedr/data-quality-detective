@@ -1,4 +1,4 @@
-"""Public web demo refuses ALL uploaded workbooks, including macro-enabled ones."""
+"""Optional sample-only mode and the real free hosted upload contract."""
 
 from io import BytesIO
 
@@ -38,7 +38,7 @@ def test_public_demo_accepts_no_uploaded_workbooks(monkeypatch):
             follow_redirects=False,
         )
         assert response.status_code == 403, (endpoint, response.text)
-        assert "no uploads" in response.json()["detail"].lower()
+        assert "unavailable" in response.json()["detail"].lower()
         assert response.headers.get("X-Frame-Options") == "DENY"
     assert client.get("/api/demo/analyze", params={"file": "private.xlsm"}).status_code == 200
 
@@ -99,12 +99,33 @@ def test_deployed_ui_includes_mode_detection_and_demo_mode_paging(monkeypatch):
     assert "state.demo" in script.text
 
 
-def test_vercel_deployments_fail_closed_even_without_mode_setting(monkeypatch):
+def test_vercel_hosts_real_free_uploads_with_explicit_body_limit(monkeypatch):
     monkeypatch.delenv("DQD_PUBLIC_DEMO_ONLY", raising=False)
     monkeypatch.setenv("VERCEL", "1")
     client = TestClient(app)
-    assert client.get("/api/config").json()["mode"] == "public_demo"
+    config = client.get("/api/config").json()
+    assert config["mode"] == "free_web"
+    assert config["upload_allowed"] is True
+    assert config["max_upload_bytes"] == 4 * 1024 * 1024
+    response = client.post("/api/analyze", files={
+        "file": ("actual.csv", b"a,b\\n1,2\\n1,2\\n")
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()["summary"]["duplicate_rows"] == 1
+    assert client.get("/api/saas/config").status_code == 404
+    assert client.get("/app").status_code == 404
     assert client.post(
-        "/api/analyze", files={"file": ("private.csv", b"x\nhello\n")}
-    ).status_code == 403
-    assert client.get("/api/demo/analyze").status_code == 200
+        "/api/analyze",
+        headers={"Content-Length": str(5 * 1024 * 1024)},
+        content=b"x",
+    ).status_code == 413
+
+
+def test_retired_paid_routes_return_not_found(monkeypatch):
+    monkeypatch.delenv("DQD_PUBLIC_DEMO_ONLY", raising=False)
+    monkeypatch.setenv("VERCEL", "1")
+    client = TestClient(app)
+    for route in ("/app", "/product", "/privacy", "/terms",
+                  "/api/saas/config", "/api/saas/billing/checkout",
+                  "/api/saas/analyze", "/api/saas/admin/config"):
+        assert client.get(route).status_code == 404, route
