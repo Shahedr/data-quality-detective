@@ -1,0 +1,109 @@
+name: Public demo live smoke check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-demo-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify public hosted sample demo without credentials
+        env:
+          DEMO_URL: https://data-quality-detective-demo.vercel.app
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+
+          origin = os.environ["DEMO_URL"].rstrip("/")
+
+          def call(path, method="GET", data=None, headers=None):
+              req = Request(origin + path, data=data, method=method, headers=headers or {})
+              try:
+                  with urlopen(req, timeout=20) as res:
+                      return res.status, res.read()
+              except HTTPError as exc:
+                  return exc.code, exc.read()
+
+          # DNS and the initial cold-start may take several seconds after publishing.
+          for attempt in range(12):
+              try:
+                  status, raw = call("/api/config")
+                  print(f"Public GET /api/config: {status} (attempt {attempt + 1})", flush=True)
+                  if status == 200:
+                      break
+              except Exception as exc:
+                  print(f"Deployment not ready: {type(exc).__name__}: {exc}", flush=True)
+              if attempt == 11:
+                  raise RuntimeError("Hosted /api/config did not become publicly available")
+              time.sleep(10)
+          else:
+              raise RuntimeError("Missing successful config response")
+
+          config = json.loads(raw)
+          assert config["mode"] == "public_demo", config
+          assert config["upload_allowed"] is False, config
+          assert config["macro_execution_via_web"] is False, config
+
+          status, raw = call("/")
+          assert status == 200 and b"initializeMode();" in raw, (
+              f"Homepage failed: HTTP {status}, {raw[:300]!r}"
+          )
+          print("Public homepage: OK")
+
+          status, raw = call("/api/demo/analyze")
+          data = json.loads(raw)
+          assert status == 200 and data["summary"]["rows"] == 12, (
+              f"Demo analysis failed: HTTP {status}, {raw[:300]!r}"
+          )
+          print("Bundled 12-row sample analysis: OK")
+
+          status, raw = call("/api/demo/rows?issue=duplicate")
+          data = json.loads(raw)
+          assert status == 200 and data["total_matching_rows"] == 2, (
+              f"Duplicate filter failed: HTTP {status}, {raw[:300]!r}"
+          )
+          print("Public duplicate-row filter: OK")
+
+          status, raw = call("/api/demo/export/html")
+          assert status == 200 and b"<html" in raw.lower(), (
+              f"HTML report failed: HTTP {status}, {raw[:200]!r}"
+          )
+          print("Public complete HTML export: OK")
+
+          status, raw = call("/api/demo/export/xlsx")
+          assert status == 200 and raw.startswith(b"PK"), (
+              f"Excel audit export failed: HTTP {status}, {raw[:200]!r}"
+          )
+          print("Public XLSX review export: OK")
+
+          # A real multipart attempt MUST get HTTP 403, not 200 or 422.
+          boundary = "dqd_public_smoke"
+          payload = (
+              f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; "
+              "filename=\"private.xlsm\"\r\n"
+              "Content-Type: application/octet-stream\r\n\r\n"
+              "PK-not-a-real-xlsm\r\n"
+              f"--{boundary}--\r\n"
+          ).encode("utf-8")
+          status, raw = call(
+              "/api/analyze", method="POST", data=payload,
+              headers={"Content-Type": f"multipart/form-data; boundary={boundary}"}
+          )
+          assert status == 403, (
+              f"SECURITY FAILURE: Upload endpoint returned HTTP {status}, {raw[:300]!r}"
+          )
+          print("Upload blocked with 403: OK")
+          print("ALL PUBLIC DEMO SMOKE CHECKS PASSED")
+          PY
