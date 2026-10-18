@@ -61,7 +61,10 @@ def test_xlsx_export_contains_all_sheets_summary_and_issue_register():
         assert a["D4"].fill.fgColor.rgb.endswith("EDDBFD")
         assert a["B2"].value == "Duplicate group"
         assert a["A3"].value == "2"
-        # openpyxl-created formulas have no cached values. The values-only\n        # export leaves them blank rather than fabricating a calculated result.\n        assert a["E2"].value is None\n        assert a["E2"].data_type != "f"
+        # openpyxl-created formulas have no cached values. The values-only
+        # export leaves them blank rather than fabricating a calculated result.
+        assert a["E2"].value is None
+        assert a["E2"].data_type != "f"
         assert result["Private Lookup"]["C2"].value == "A"
         issues = list(result["DQD Issue Register"].values)
         assert any(item[4] == "Value not in supported dropdown list"
@@ -109,7 +112,8 @@ def test_audit_workbook_does_not_embed_vba_or_excel_formulas():
     result = load_workbook(BytesIO(response.content))
     try:
         assert result["DQD Audit Overview"]["B3"].value.startswith("Value-only")
-        assert result["Orders"]["E2"].value is None\n        assert result["Orders"]["E2"].data_type != "f"
+        assert result["Orders"]["E2"].value is None
+        assert result["Orders"]["E2"].data_type != "f"
     finally:
         result.close()
 
