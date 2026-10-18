@@ -69,7 +69,7 @@
     button.disabled=true;
     try{
       const email=$("email").value.trim();
-      if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
         throw Error("Enter your account email address first.");
       }
       // Email authentication uses the existing Supabase user only:
