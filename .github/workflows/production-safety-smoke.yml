@@ -45,11 +45,10 @@ jobs:
           else:
               raise SystemExit('Production demo not ready with expected JSON; fail closed')
           assert jget('/api/saas/config')['enabled'] is False
-          admin=jget('/api/saas/admin/config')
-          assert admin['read_only'] is True and admin['mfa_required'] is True
-          # Admin may be disabled or safely MFA-enabled; never a customer activation gate.
-          if admin['overview_enabled']:
-              assert admin['overview_source']=='supabase_rpc'
+          # Administrative actions now belong in Supabase Dashboard, not this site.
+          for route in ('/api/saas/admin/config','/api/saas/admin/overview','/admin','/admin.js'):
+              status,content_type,body=call(route)
+              assert status==404,(route,status,body[:100])
           assert jget('/api/demo/analyze')['summary']['rows']==12
           for route,expected in (
             ('/api/analyze',403),
@@ -58,11 +57,5 @@ jobs:
           ):
               status,typ,body=call(route,'POST',b'')
               assert status==expected,(route,status,body[:100])
-          status,typ,body=call('/api/saas/admin/overview')
-          assert status==503,'Password-based database admin unexpectedly active'
-          status,typ,body=call('/admin')
-          assert status==200 and b'Private owner console' in body
-          status,typ,body=call('/admin.js')
-          assert status==200 and b'client.rpc("dqd_owner_overview")' in body
-          print('PRODUCTION SAFETY PASS: sample demo, customer uploads and payments disabled, admin MFA-only',flush=True)
+          print('PRODUCTION SAFETY PASS: sample demo, no admin webapp, no customer uploads/payments',flush=True)
           PY

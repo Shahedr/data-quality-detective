@@ -94,47 +94,6 @@ def ready():
     return enabled() and _required_env() and _payment_environment_approved()
 
 
-def _admin_owner_configured():
-    """Validate the private immutable owner UUID; never expose it in public config."""
-    import uuid
-    try:
-        allowed = str(uuid.UUID(os.environ["DQD_ADMIN_USER_ID"]))
-    except (KeyError, ValueError, AttributeError):
-        return False
-    return allowed != str(uuid.UUID(int=0))
-
-
-def admin_auth_ready():
-    """Owner login/MFA setup only, independent of customer SaaS and DB access.
-
-    The optional setup flag allows an invited owner to enroll MFA *before*
-    database credentials or the read-only admin overview are configured.
-    """
-    return (_admin_owner_configured()
-            and (os.getenv("DQD_ADMIN_SETUP_ENABLED") == "1"
-                 or os.getenv("DQD_ADMIN_ENABLED") == "1")
-            and bool(os.getenv("SUPABASE_URL"))
-            and bool(os.getenv("SUPABASE_ANON_KEY")))
-
-
-def admin_ready():
-    """Read-only owner metrics require a separate explicit database gate."""
-    return (admin_auth_ready()
-            and os.getenv("DQD_ADMIN_ENABLED", "") == "1"
-            and bool(os.getenv("DQD_SAAS_DATABASE_URL")))
-
-
-def admin_rpc_ready():
-    """Enable Supabase's separately authorized read-only MFA RPC dashboard.
-
-    No database password or server-side service-role key is needed; the RPC
-    verifies the signed-in owner and aal2 claim again inside PostgreSQL.
-    Customer SaaS launch switches are completely independent.
-    """
-    return (admin_auth_ready()
-            and os.getenv("DQD_ADMIN_METRICS_RPC_ENABLED", "") == "1")
-
-
 def _site_url():
     value = os.environ["DQD_SITE_URL"].rstrip("/")
     if not value.startswith("https://") and not value.startswith("http://127.0.0.1:"):
@@ -196,24 +155,6 @@ def account_id(request: Request):
     if not match:
         raise HTTPException(401, "Sign in is required.")
     return _authenticate_bearer(match.group(1))
-
-
-def admin_id(request: Request):
-    """Authorize by immutable Supabase subject and MFA, never by email.
-
-    Do not put the admin UUID in client JavaScript, markup or Git.
-    """
-    if not admin_ready():
-        raise HTTPException(503, "Admin console is not configured.")
-    header = request.headers.get("authorization", "")
-    match = re.fullmatch(r"Bearer ([A-Za-z0-9._-]+)", header)
-    if not match:
-        raise HTTPException(401, "Admin sign-in is required.")
-    subject = _authenticate_bearer(match.group(1), require_aal2=True)
-    import uuid
-    if subject != str(uuid.UUID(os.environ["DQD_ADMIN_USER_ID"])):
-        raise HTTPException(403, "You do not have permission to access the admin console.")
-    return subject
 
 
 def _database():
@@ -326,47 +267,6 @@ def public_configuration():
         "no_macro_execution": True,
         "legal_entity": os.getenv("DQD_LEGAL_ENTITY") if ready() else None,
         "privacy_contact": os.getenv("DQD_PRIVACY_EMAIL") if ready() else None,
-    }
-
-
-@router.get("/admin/config")
-def admin_configuration():
-    """Only public Auth configuration. No user IDs, database credentials or keys."""
-    auth_enabled = admin_auth_ready()
-    return {
-        "enabled": auth_enabled,
-        "overview_enabled": admin_rpc_ready() or admin_ready(),
-        "overview_source": ("supabase_rpc" if admin_rpc_ready()
-                            else "server" if admin_ready() else None),
-        "supabase_url": os.getenv("SUPABASE_URL") if auth_enabled else None,
-        "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY") if auth_enabled else None,
-        "mfa_required": True,
-        "read_only": True,
-    }
-
-
-@router.get("/admin/overview")
-def admin_overview(subject: str = Depends(admin_id)):
-    """Aggregate-only read access; no customer emails, rows, files or tokens."""
-    with _database() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) AS accounts, "
-                "COUNT(*) FILTER (WHERE subscription_status IN ('active','trialing')) AS active_pro "
-                "FROM saas_accounts"
-            )
-            subscribers = cur.fetchone()
-            cur.execute("SELECT COALESCE(SUM(analyses),0) AS total FROM saas_monthly_usage")
-            analyzed = cur.fetchone()
-            cur.execute("SELECT COUNT(*) AS total FROM saas_stripe_events")
-            events = cur.fetchone()
-    return {
-        "accounts": subscribers["accounts"],
-        "active_pro_accounts": subscribers["active_pro"],
-        "all_time_analyses": analyzed["total"],
-        "processed_webhook_events": events["total"],
-        "uploaded_files_stored_in_app_database": False,
-        "read_only": True,
     }
 
 
