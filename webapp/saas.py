@@ -108,6 +108,17 @@ def admin_ready():
             and bool(os.getenv("DQD_SAAS_DATABASE_URL")))
 
 
+def admin_rpc_ready():
+    """Enable Supabase's separately authorized read-only MFA RPC dashboard.
+
+    No database password or server-side service-role key is needed; the RPC
+    verifies the signed-in owner and aal2 claim again inside PostgreSQL.
+    Customer SaaS launch switches are completely independent.
+    """
+    return (admin_auth_ready()
+            and os.getenv("DQD_ADMIN_METRICS_RPC_ENABLED", "") == "1")
+
+
 def _site_url():
     value = os.environ["DQD_SITE_URL"].rstrip("/")
     if not value.startswith("https://") and not value.startswith("http://127.0.0.1:"):
@@ -308,7 +319,9 @@ def admin_configuration():
     auth_enabled = admin_auth_ready()
     return {
         "enabled": auth_enabled,
-        "overview_enabled": admin_ready(),
+        "overview_enabled": admin_rpc_ready() or admin_ready(),
+        "overview_source": ("supabase_rpc" if admin_rpc_ready()
+                            else "server" if admin_ready() else None),
         "supabase_url": os.getenv("SUPABASE_URL") if auth_enabled else None,
         "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY") if auth_enabled else None,
         "mfa_required": True,

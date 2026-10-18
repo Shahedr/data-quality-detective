@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owner console (private) | Data Quality Detective</title>
-<link rel="stylesheet" href="/saas.css"><script defer src="/admin.js"></script></head>
+<link rel="stylesheet" href="/saas.css"><script defer src="/admin.js"></script>
+</head>
 <body><header class="top"><a href="/" class="brand">◈ Data Quality Detective</a><nav><a href="/">Public demo</a><a href="/privacy">Privacy</a></nav></header>
 <main>
 <p class="eyebrow">OWNER-ONLY · READ-ONLY ADMINISTRATION</p>
@@ -25,8 +26,22 @@
 <label>Six-digit authenticator code<input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></label>
 <div class="row"><button id="enroll" class="secondary">Set up authenticator</button><button id="verify">Verify code</button><button id="signoutMfa" class="secondary">Sign out</button></div></section>
 <section id="setupComplete" class="panel hidden"><h2>Authenticator setup verified</h2><p>Your sign-in now has a verified authenticator factor. Read-only owner metrics remain disabled until separate database and production-security checks pass.</p><button id="signoutSetup" class="secondary">Sign out</button></section>
-<section id="overview" class="panel hidden"><div class="split"><h2>Private service overview</h2><button id="signout" class="secondary">Sign out</button></div>
-<dl><dt>DQD accounts</dt><dd id="accounts">—</dd><dt>Active Pro accounts</dt><dd id="active">—</dd>
-<dt>Recorded analyses (all-time)</dt><dd id="analyses">—</dd><dt>Processed Stripe webhook events</dt><dd id="webhooks">—</dd></dl>
-<p class="muted">Counts come from the private database. Supabase Auth users and Stripe's billing records are managed separately. No destructive admin controls are exposed here.</p></section>
+<section id="overview" class="panel hidden"><div class="split"><h2>Service overview</h2><button id="signout" class="secondary">Sign out</button></div>
+<p class="muted">Private aggregate statistics only · Verified owner and authenticator required · All actions read-only</p>
+<div class="dashboard-metrics">
+<div><span>Registered identities</span><strong id="identities">—</strong></div>
+<div><span>DQD accounts</span><strong id="accounts">—</strong></div>
+<div><span>Active Pro accounts</span><strong id="active">—</strong></div>
+<div><span>Analyses this month</span><strong id="monthAnalyses">—</strong></div>
+<div><span>Analyses all-time</span><strong id="analyses">—</strong></div>
+<div><span>Requests today</span><strong id="requestsToday">—</strong></div>
+<div><span>Processed billing events</span><strong id="webhooks">—</strong></div>
+</div>
+<div class="dashboard-tables">
+<section><h3>Last seven days · Requests</h3><table><thead><tr><th scope="col">UTC date</th><th scope="col">Requests</th></tr></thead><tbody id="dailyActivity"></tbody></table></section>
+<section><h3>Last six months · Analyses</h3><table><thead><tr><th scope="col">Month</th><th scope="col">Analyses</th></tr></thead><tbody id="monthlyActivity"></tbody></table></section>
+</div>
+<p id="reportTimestamp" class="muted"></p>
+<p class="muted">Spreadsheet bytes and files are not stored in the application's four SaaS tables. Billing payment details reside with Stripe. Auth users are separate from DQD accounts. This dashboard has no destructive or customer-data export functions.</p>
+</section>
 </main></body></html>

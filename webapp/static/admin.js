@@ -9,22 +9,52 @@
     if (error || !data.session?.access_token) throw Error("Sign in again.");
     return data.session.access_token;
   }
-  async function overview(){
-    const token = await getToken();
-    const response = await fetch("/api/saas/admin/overview",{
-      headers:{"Authorization":"Bearer "+token},cache:"no-store"
-    });
-    if (!response.ok) {
-      const result=await response.json().catch(()=>({}));
-      throw Error(result.detail||"Owner access refused ("+response.status+").");
+  function fillTrend(tableId, entries, labelField, countField){
+    const body=$(tableId);
+    body.replaceChildren();
+    for(const entry of entries){
+      const row=document.createElement("tr");
+      const label=document.createElement("td");
+      const count=document.createElement("td");
+      label.textContent=String(entry[labelField]??"");
+      count.textContent=String(entry[countField]??0);
+      count.className="numeric";
+      row.append(label,count);
+      body.append(row);
     }
-    const info=await response.json();
-    $("accounts").textContent=String(info.accounts);
-    $("active").textContent=String(info.active_pro_accounts);
-    $("analyses").textContent=String(info.all_time_analyses);
-    $("webhooks").textContent=String(info.processed_webhook_events);
+  }
+  async function overview(){
+    let info;
+    if(cfg.overview_source==="supabase_rpc"){
+      // JWT verification and MFA owner allowlist are enforced by Supabase
+      // PostgREST and the private SQL SECURITY DEFINER function, NOT the UI.
+      const {data,error}=await client.rpc("dqd_owner_overview");
+      if(error)throw Error("Owner metrics permission denied or temporarily unavailable.");
+      info=data;
+    }else if(cfg.overview_source==="server"){
+      const token=await getToken();
+      const response=await fetch("/api/saas/admin/overview",{
+        headers:{"Authorization":"Bearer "+token},cache:"no-store"
+      });
+      if(!response.ok)throw Error("Owner metrics permission denied or unavailable.");
+      info=await response.json();
+    }else{
+      throw Error("Owner overview has not been enabled.");
+    }
+    if(!info || info.read_only!==true)throw Error("Invalid owner metrics response.");
+    $("accounts").textContent=String(info.accounts??0);
+    $("identities").textContent=String(info.registered_identities??"—");
+    $("active").textContent=String(info.active_pro_accounts??0);
+    $("analyses").textContent=String(info.all_time_analyses??0);
+    $("monthAnalyses").textContent=String(info.analyses_this_month??"—");
+    $("requestsToday").textContent=String(info.requests_today??"—");
+    $("webhooks").textContent=String(info.processed_webhook_events??0);
+    fillTrend("dailyActivity",info.daily_activity||[],"date","requests");
+    fillTrend("monthlyActivity",info.monthly_activity||[],"month","analyses");
+    $("reportTimestamp").textContent=info.generated_at_utc
+      ? "Database snapshot: "+String(info.generated_at_utc)+" UTC" : "Read-only database aggregates.";
     show("overview",true);
-    status("Owner access verified · Read-only.");
+    status("Owner access verified · MFA-protected read-only dashboard.");
   }
   async function refresh(){
     for (const id of ["login","mfa","overview","setupComplete"]) show(id,false);
