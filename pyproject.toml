@@ -50,6 +50,11 @@ web = [
   "uvicorn>=0.30",
   "python-multipart>=0.0.9"
 ]
+saas = [
+  "PyJWT[crypto]>=2.9,<3",
+  "psycopg[binary]>=3.2,<4",
+  "stripe>=11,<15",
+]
 excel-native = [
   "pywin32>=306; sys_platform == 'win32'"
 ]
@@ -63,7 +68,10 @@ dev = [
   "twine>=6.0",
   "fastapi>=0.115",
   "python-multipart>=0.0.9",
-  "httpx>=0.27"
+  "httpx>=0.27",
+  "PyJWT[crypto]>=2.9,<3",
+  "psycopg[binary]>=3.2,<4",
+  "stripe>=11,<15"
 ]
 
 [project.scripts]
@@ -79,7 +87,7 @@ Changelog = "https://github.com/Shahedr/data-quality-detective/blob/main/CHANGEL
 include = ["dqdetect*", "webapp*"]
 
 [tool.setuptools.package-data]
-webapp = ["static/*.html", "static/*.js", "sample.csv"]
+webapp = ["static/*.html", "static/*.js", "static/*.css", "sample.csv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
