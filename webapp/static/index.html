@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Data Quality Detective · Browser Preview</title>
+<title>Data Quality Detective · Spreadsheet Audit</title>
 <style>
 :root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17233a;background:#f5f7fb;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}
@@ -115,7 +115,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 <body>
 <header><div class="shell top">
   <div class="brand"><span class="brand-mark">◈</span><span>Data Quality Detective</span></div>
-  <span class="preview">LOCAL MVP · NOT A HOSTED SERVICE</span>
+  <span class="preview" id="modeTag">LOCAL WORKSPACE</span>
 </div></header>
 <main class="shell">
   <div class="eyebrow">Data confidence, in a few clicks</div>
@@ -139,7 +139,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <h3>What gets checked?</h3>
       <p>Every column is profiled with the same proven Python checks used by our <strong>dqdetect</strong> command-line tool.</p>
       <span class="cap">Missing data</span><span class="cap">Duplicates</span><span class="cap">Invalid dates</span><span class="cap">Outliers</span><span class="cap">Mixed types</span>
-      <div class="notice">Prototype: no accounts or payments. Files are processed by the local server and aren't saved to an application database. Do not use for sensitive data on a publicly exposed deployment.</div>
+<div class="notice" id="dataNotice">Local development tool: no accounts or payments. Uploaded files are processed by your local server. Do not expose it publicly or upload sensitive data to an untrusted service.</div>
       <div class="notice"><strong>Excel power users:</strong> A separate local
       <a href="https://github.com/Shahedr/data-quality-detective/blob/main/webapp/NATIVE_EXCEL.md" target="_blank" rel="noopener noreferrer">Excel-native formula / approved VBA test runner</a>
       is available for Windows. VBA cannot execute through this upload page.</div>
@@ -233,6 +233,7 @@ const $=id=>document.getElementById(id);
 let lastReport=null;
 let currentFile=null;
 let running=false;
+let demoMode=false;
 const SAMPLE_CSV=[
 "order_id,order_date,customer_id,region,quantity,unit_price,freight_cost,status",
 "1,2025-01-03,C001,Midwest,1,39.99,12.50,Shipped",
@@ -312,7 +313,7 @@ function showReport(data){
       macro.append(item("div",finding.category+": "+finding.keyword+" — "+finding.explanation+" · Evidence: "+(finding.evidence||"scanner heuristic"),"audit-finding"));
   }else{macro.classList.add("hidden");}
   if(data.spreadsheet)window.DQDSpreadsheet.start(
-    currentFile,data.spreadsheet,data.columns,data.selected_sheet||""
+    currentFile,data.spreadsheet,data.columns,data.selected_sheet||"",demoMode
   );
   const s=data.summary;
   $("source").textContent="Source: "+s.source;
@@ -341,7 +342,47 @@ function showReport(data){
   $("results").classList.remove("hidden");
 }
 
+async function initializeMode(){
+  try{
+    const response=await fetch("/api/config",{cache:"no-store"});
+    if(!response.ok)return;
+    const mode=await response.json();
+    demoMode=!!mode.public_demo;
+    if(!demoMode)return;
+    document.getElementById("modeTag").textContent="PUBLIC SAMPLE DEMO";
+    document.querySelector(".lead").textContent=
+      "Explore the Data Quality Detective dashboard with bundled sample data. No personal file uploads are allowed in this public preview.";
+    $("choose").classList.add("hidden");
+    $("sample").textContent="Explore interactive demo";
+    $("fileTitle").textContent="Try a sample data audit";
+    document.querySelector("#drop .muted").textContent=
+      "Fictional data only · no uploads · no macro execution";
+    $("dataNotice").textContent=
+      "This public preview processes only the supplied sample. To check your own Excel or CSV files, use the local desktop application.";
+    setStatus("Demo ready. Select “Explore interactive demo” to begin.");
+  }catch(_){
+    setStatus("Unable to load demo configuration. Try refreshing.",true);
+  }
+}
+async function analyzeDemo(){
+  if(running)return;
+  running=true;$("sample").disabled=true;
+  setStatus("Analyzing example data…");
+  $("results").classList.add("hidden");
+  window.DQDSpreadsheet.stop();
+  try{
+    const response=await fetch("/api/demo/analyze",{cache:"no-store"});
+    const data=await response.json();
+    if(!response.ok)throw Error(data.detail||"Example analysis unavailable.");
+    currentFile=new File([SAMPLE_CSV],"sample.csv",{type:"text/csv"});
+    showReport(data);
+    setStatus("Demo loaded. Explore the issues and download example reports.");
+  }catch(error){
+    setStatus("Demo failed: "+(error.message||"Unknown error"),true);
+  }finally{running=false;$("sample").disabled=false;}
+}
 async function analyzeFile(file,sheet=""){
+  if(demoMode){setStatus("Public demo uploads are disabled. Please use the example.",true);return;}
   if(running)return;
   if(!file)return;
   running=true;$("choose").disabled=true;$("sample").disabled=true;
@@ -361,10 +402,10 @@ async function analyzeFile(file,sheet=""){
 $("sheetSelect").addEventListener("change",()=>{if(currentFile)analyzeFile(currentFile,$("sheetSelect").value);});
 $("choose").addEventListener("click",()=> $("upload").click());
 $("upload").addEventListener("change",e=>analyzeFile(e.target.files[0]));
-$("sample").addEventListener("click",()=>analyzeFile(new File([SAMPLE_CSV],"messy_orders.csv",{type:"text/csv"})));
+$("sample").addEventListener("click",()=>demoMode?analyzeDemo():analyzeFile(new File([SAMPLE_CSV],"messy_orders.csv",{type:"text/csv"})));
 $("drop").addEventListener("dragover",e=>{e.preventDefault();$("drop").classList.add("dragover");});
 $("drop").addEventListener("dragleave",()=> $("drop").classList.remove("dragover"));
-$("drop").addEventListener("drop",e=>{e.preventDefault();$("drop").classList.remove("dragover");if(e.dataTransfer.files.length)analyzeFile(e.dataTransfer.files[0]);});
+$("drop").addEventListener("drop",e=>{e.preventDefault();$("drop").classList.remove("dragover");if(!demoMode&&e.dataTransfer.files.length)analyzeFile(e.dataTransfer.files[0]);});
 function download(content,kind,extension){
   const blob=new Blob([content],{type:kind});
   const url=URL.createObjectURL(blob);const a=document.createElement("a");
@@ -381,7 +422,7 @@ $("downloadXlsx").addEventListener("click",async()=>{
   setStatus("Creating a separate, color-coded Excel review file…");
   try{
     const body=new FormData();body.append("file",currentFile);
-    const response=await fetch("/api/export/xlsx",{method:"POST",body,cache:"no-store"});
+    const response=await fetch(demoMode?"/api/demo/export/xlsx":"/api/export/xlsx",demoMode?{method:"GET",cache:"no-store"}:{method:"POST",body,cache:"no-store"});
     if(!response.ok){
       let message="Unable to create Excel review report.";
       try{const e=await response.json();if(e.detail)message=e.detail;}catch(_){}
@@ -406,7 +447,7 @@ $("downloadHtml").addEventListener("click",async()=>{
   setStatus("Creating full HTML export. Very large sheets can take time.");
   try{
     const body=new FormData();body.append("file",currentFile);
-    const response=await fetch("/api/export/html",{method:"POST",body,cache:"no-store"});
+    const response=await fetch(demoMode?"/api/demo/export/html":"/api/export/html",demoMode?{method:"GET",cache:"no-store"}:{method:"POST",body,cache:"no-store"});
     if(!response.ok){
       let message="Failed to export spreadsheet.";
       try{const e=await response.json();if(e.detail)message=e.detail;}catch(_){}
@@ -422,6 +463,7 @@ $("downloadHtml").addEventListener("click",async()=>{
   }catch(error){setStatus("HTML export failed: "+(error.message||"Unknown error"),true);}
   finally{button.disabled=false;button.textContent=previous;}
 });
+initializeMode();
 </script>
 </body>
 </html>
