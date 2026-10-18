@@ -29,6 +29,7 @@
     epoch: 0,
     file: null,
     sheet: "",
+    demo: false,
     filter: "all",
     count: 0,
     totalRows: 0,
@@ -143,7 +144,12 @@
     body.append("page", String(page));
     body.append("issue", selectedFilter);
 
-    fetch("/api/rows", {method: "POST", body: body, cache: "no-store"})
+    fetch(
+      state.demo
+        ? "/api/demo/rows?page=" + page + "&issue=" + encodeURIComponent(selectedFilter)
+        : "/api/rows",
+      state.demo ? {method: "GET", cache: "no-store"} : {method: "POST", body: body, cache: "no-store"}
+    )
       .then(async response => {
         const payload = await response.json();
         if (!response.ok) {
@@ -258,7 +264,12 @@
     body.append("issue", value);
     body.append("page", "1");
     try {
-      const response = await fetch("/api/rows", {method: "POST", body, cache: "no-store"});
+      const response = await fetch(
+        state.demo
+          ? "/api/demo/rows?page=1&issue=" + encodeURIComponent(value)
+          : "/api/rows",
+        state.demo ? {method: "GET", cache: "no-store"} : {method: "POST", body, cache: "no-store"}
+      );
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(typeof payload.detail === "string" ? payload.detail : "Could not filter rows.");
@@ -279,11 +290,12 @@
     }
   }
 
-  function start(file, snapshot, profiles, selectedSheet = "") {
+  function start(file, snapshot, profiles, selectedSheet = "", publicDemo = false) {
     if (!file || !snapshot) return;
     state.epoch++;
     state.file = file;
     state.sheet = selectedSheet || "";
+    state.demo = !!publicDemo;
     state.filter = "all";
     state.count = snapshot.total_matching_rows;
     state.totalRows = snapshot.total_rows;
@@ -305,6 +317,7 @@
   function stop() {
     state.epoch++;
     state.file = null;
+    state.demo = false;
     state.cache.clear();
     state.loading.clear();
     state.failed.clear();

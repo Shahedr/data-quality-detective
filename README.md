@@ -9,6 +9,20 @@ A lightweight Python CLI for the first pass through a new dataset.
 
 ![Data Quality Detective demo](assets/dqdetect-demo-v100.svg)
 
+## Use Data Quality Detective
+
+**Windows (full local tool):** Download the repository ZIP, extract it, then
+double-click `INSTALL_ON_WINDOWS.cmd` once. Thereafter use
+`START_DATA_QUALITY_DETECTIVE.cmd` to start the app and open the browser on
+the first free local port, or `START_EXCEL_VALIDATOR.cmd` for desktop Excel
+formula testing. See [Windows native workbook notes](webapp/NATIVE_EXCEL.md).
+
+**Hosted preview:** The [public web deployment guide](webapp/DEPLOYMENT.md)
+describes a hosted sample-data demo that allows people to try the interface
+without accounts or uploads. For security, it **cannot accept customer files
+or run macros**. The complete full-data features remain local while the
+commercial SaaS authentication, isolation, storage, and billing are developed.
+
 ## Browser preview (development only)
 
 An optional local browser interface is available in [webapp/](webapp/README.md).
