@@ -78,6 +78,23 @@ def ready():
     return enabled() and _required_env()
 
 
+def admin_ready():
+    """Independent, explicitly opted-in, read-only owner console.
+
+    This must not rely on or enable the customer SaaS launch switches.
+    """
+    import uuid
+    try:
+        allowed = str(uuid.UUID(os.environ["DQD_ADMIN_USER_ID"]))
+    except (KeyError, ValueError, AttributeError):
+        return False
+    return (allowed != str(uuid.UUID(int=0))
+            and os.getenv("DQD_ADMIN_ENABLED", "") == "1"
+            and bool(os.getenv("SUPABASE_URL"))
+            and bool(os.getenv("SUPABASE_ANON_KEY"))
+            and bool(os.getenv("DQD_SAAS_DATABASE_URL")))
+
+
 def _site_url():
     value = os.environ["DQD_SITE_URL"].rstrip("/")
     if not value.startswith("https://") and not value.startswith("http://127.0.0.1:"):
@@ -103,7 +120,7 @@ def _key_client(jwks_url):
     return PyJWKClient(jwks_url, cache_keys=True, lifespan=300)
 
 
-def _authenticate_bearer(token):
+def _authenticate_bearer(token, *, require_aal2=False):
     """Verify asymmetric JWT against project-specific JWKS, issuer and audience."""
     if len(token) > 8192:
         raise HTTPException(401, "Invalid login token.")
@@ -122,6 +139,8 @@ def _authenticate_bearer(token):
         )
         if decoded.get("role") != "authenticated":
             raise ValueError("Not an authenticated user")
+        if require_aal2 and decoded.get("aal") != "aal2":
+            raise ValueError("Admin console requires an MFA-verified session")
         subject = decoded["sub"]
         # Supabase Auth user IDs are UUIDs. Do not accept arbitrary identity strings.
         import uuid
@@ -137,6 +156,24 @@ def account_id(request: Request):
     if not match:
         raise HTTPException(401, "Sign in is required.")
     return _authenticate_bearer(match.group(1))
+
+
+def admin_id(request: Request):
+    """Authorize by immutable Supabase subject and MFA, never by email.
+
+    Do not put the admin UUID in client JavaScript, markup or Git.
+    """
+    if not admin_ready():
+        raise HTTPException(503, "Admin console is not configured.")
+    header = request.headers.get("authorization", "")
+    match = re.fullmatch(r"Bearer ([A-Za-z0-9._-]+)", header)
+    if not match:
+        raise HTTPException(401, "Admin sign-in is required.")
+    subject = _authenticate_bearer(match.group(1), require_aal2=True)
+    import uuid
+    if subject != str(uuid.UUID(os.environ["DQD_ADMIN_USER_ID"])):
+        raise HTTPException(403, "You do not have permission to access the admin console.")
+    return subject
 
 
 def _database():
@@ -249,6 +286,44 @@ def public_configuration():
         "no_macro_execution": True,
         "legal_entity": os.getenv("DQD_LEGAL_ENTITY") if ready() else None,
         "privacy_contact": os.getenv("DQD_PRIVACY_EMAIL") if ready() else None,
+    }
+
+
+@router.get("/admin/config")
+def admin_configuration():
+    """Only public Auth configuration. No user IDs, database credentials or keys."""
+    active = admin_ready()
+    return {
+        "enabled": active,
+        "supabase_url": os.getenv("SUPABASE_URL") if active else None,
+        "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY") if active else None,
+        "mfa_required": True,
+        "read_only": True,
+    }
+
+
+@router.get("/admin/overview")
+def admin_overview(subject: str = Depends(admin_id)):
+    """Aggregate-only read access; no customer emails, rows, files or tokens."""
+    with _database() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) AS accounts, "
+                "COUNT(*) FILTER (WHERE subscription_status IN ('active','trialing')) AS active_pro "
+                "FROM saas_accounts"
+            )
+            subscribers = cur.fetchone()
+            cur.execute("SELECT COALESCE(SUM(analyses),0) AS total FROM saas_monthly_usage")
+            analyzed = cur.fetchone()
+            cur.execute("SELECT COUNT(*) AS total FROM saas_stripe_events")
+            events = cur.fetchone()
+    return {
+        "accounts": subscribers["accounts"],
+        "active_pro_accounts": subscribers["active_pro"],
+        "all_time_analyses": analyzed["total"],
+        "processed_webhook_events": events["total"],
+        "uploaded_files_stored_in_app_database": False,
+        "read_only": True,
     }
 
 
