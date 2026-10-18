@@ -192,3 +192,18 @@ def test_unconfigured_owner_cannot_expose_setup_even_with_flag(monkeypatch):
     config = client.get("/api/saas/admin/config").json()
     assert config["enabled"] is False
     assert config["supabase_anon_key"] is None
+
+
+
+def test_magic_link_login_only_targets_existing_owner_and_does_not_enable_signup():
+    """Preview offers alternate sign-in without creating a SaaS account."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "webapp" / "static"
+    js = (root / "admin.js").read_text(encoding="utf-8")
+    html = (root / "admin.html").read_text(encoding="utf-8")
+    assert "signInWithOtp" in js
+    assert "shouldCreateUser:false" in js
+    assert 'emailRedirectTo:window.location.origin+"/admin"' in js
+    assert 'id="emailLink"' in html
+    assert "emailLink" in js
+    assert "Supabase dashboard password" in js
