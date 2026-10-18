@@ -31,4 +31,4 @@ The optional [Windows native Excel workflow](NATIVE_EXCEL.md) runs locally and m
 
 ## API
 
-`POST /api/analyze`, `/api/rows`, `/api/export/html`, `/api/export/xlsx` accept multipart uploads. `GET /api/config` describes the server's active free/public sample mode. There are no `/api/saas` routes. `DQD_PUBLIC_DEMO_ONLY=1` can temporarily disable uploads while leaving the fictional sample demo available.
+`POST /api/analyze`, `/api/rows`, `/api/export/html`, `/api/export/xlsx` accept multipart uploads. `GET /api/config` describes the server's active free/public sample mode. There are no `/api/saas` routes. Set `DQD_FREE_UPLOADS_DISABLED=1` on Vercel to temporarily disable uploads while leaving the fictional sample demo available. Locally, `DQD_PUBLIC_DEMO_ONLY=1` does the same.
