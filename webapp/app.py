@@ -125,6 +125,16 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.path in {"/app", "/privacy", "/terms"}:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self'; "
+            "connect-src 'self' https://*.supabase.co wss://*.supabase.co; "
+            "img-src 'self' data:; "
+            "base-uri 'none'; object-src 'none'; "
+            "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        )
     return response
 
 
