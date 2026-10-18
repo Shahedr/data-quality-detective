@@ -112,11 +112,25 @@
       await refresh();
     }catch(e){status(e.message);}
   }
+  async function loadAuthSdk(){
+    if(window.supabase?.createClient)return;
+    await new Promise((resolve,reject)=>{
+      const script=document.createElement("script");
+      // Exact SDK version rather than mutable @2; reassess on each release.
+      script.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.min.js";
+      script.crossOrigin="anonymous";
+      script.referrerPolicy="no-referrer";
+      script.onload=resolve;
+      script.onerror=()=>reject(Error("Authentication SDK could not load."));
+      document.head.appendChild(script);
+    });
+  }
   async function start(){
     try{
       const response=await fetch("/api/saas/config",{cache:"no-store"});
       cfg=await response.json();
       if(!response.ok||!cfg.enabled){show("unavailable",true);status("Private beta remains disabled.");return;}
+      await loadAuthSdk();
       if(!window.supabase?.createClient)throw Error("Authentication library unavailable.");
       client=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key,{
         auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}

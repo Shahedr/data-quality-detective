@@ -56,9 +56,61 @@ def _review_xlsx_for_frames(frames, reviews, filename):
 
 
 
+def _saas_gate_response(request):
+    """Reject unapproved/authless/mis-sized SaaS uploads BEFORE multipart parsing.
+
+    This avoids Starlette creating temporary files from anonymous uploads. A
+    body-size cap at the hosting ingress is still required: Content-Length
+    alone cannot stop a malicious client that lies about streamed bytes.
+    """
+    path = request.url.path
+    if not path.startswith("/api/saas/") or path == "/api/saas/config":
+        return None
+
+    import importlib.util
+    if not all(importlib.util.find_spec(name) is not None for name in ("jwt", "psycopg", "stripe")):
+        return JSONResponse({"detail": "Private beta is not available."}, status_code=503)
+
+    from fastapi import HTTPException
+    from webapp.saas import ready, _authenticate_bearer, MAX_UPLOAD_BYTES, MAX_WEBHOOK_BYTES
+    if not ready():
+        return JSONResponse({"detail": "Private beta is not enabled."}, status_code=503)
+
+    if request.method == "POST" and path in {
+        "/api/saas/analyze", "/api/saas/rows",
+        "/api/saas/export/html", "/api/saas/export/xlsx",
+        "/api/saas/billing/webhook",
+    }:
+        limit = (MAX_WEBHOOK_BYTES if path.endswith("/webhook") else MAX_UPLOAD_BYTES + 128 * 1024)
+        length = request.headers.get("content-length", "")
+        # A valid, bounded Content-Length is required before accepting the
+        # request body; do not allow unauthenticated chunked multipart traffic.
+        if not length.isascii() or not length.isdecimal():
+            return JSONResponse({"detail": "Content-Length is required."}, status_code=411)
+        if int(length) > limit:
+            return JSONResponse({"detail": "Request exceeds the upload limit."}, status_code=413)
+
+    if path == "/api/saas/billing/webhook":
+        return None  # This endpoint uses verified Stripe signatures instead.
+    if request.method != "GET" and request.method != "POST" and request.method != "DELETE":
+        return None
+    header = request.headers.get("authorization", "")
+    match = re.fullmatch(r"Bearer ([A-Za-z0-9._-]+)", header)
+    if not match:
+        return JSONResponse({"detail": "Sign in is required."}, status_code=401)
+    try:
+        _authenticate_bearer(match.group(1))
+    except HTTPException as exc:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    return None
+
+
 @app.middleware("http")
 async def security_headers(request, call_next):
-    if _public_demo_only() and request.url.path in {
+    gate = _saas_gate_response(request)
+    if gate is not None:
+        response = gate
+    elif _public_demo_only() and request.url.path in {
         "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx"
     }:
         response = JSONResponse(
@@ -73,6 +125,16 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.path in {"/app", "/privacy", "/terms", "/product"}:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self'; "
+            "connect-src 'self' https://*.supabase.co wss://*.supabase.co; "
+            "img-src 'self' data:; "
+            "base-uri 'none'; object-src 'none'; "
+            "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        )
     return response
 
 
@@ -86,6 +148,11 @@ def spreadsheet_script():
     return FileResponse(
         _ROOT / "static" / "spreadsheet.js", media_type="application/javascript"
     )
+
+
+@app.get("/product", include_in_schema=False)
+def public_product_page():
+    return FileResponse(_ROOT / "static" / "product.html", media_type="text/html")
 
 
 @app.get("/app", include_in_schema=False)
