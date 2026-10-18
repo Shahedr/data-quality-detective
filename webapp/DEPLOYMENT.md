@@ -8,7 +8,7 @@ Data Quality Detective is a free, open-source CSV/XLSX/XLSM quality auditor. It 
 
 The root `app.py` exports the FastAPI application. Set the project root to the repository root and deploy the `main` branch using the normal Vercel Python/FastAPI integration. The required hosting dependencies are in `pyproject.toml` (`requirements.txt` also installs the `web` extra). Do not add a catch-all rewrite to `/api/index.py`.
 
-The site is **free**, with no sign-in. `GET /api/config` returns `mode: free_web` and `upload_allowed: true` on Vercel. `DQD_PUBLIC_DEMO_ONLY=1` provides an emergency switch to revert to bundled-example-only mode, with all user uploads returning HTTP 403. The normal free web mode requires this flag to be absent or `0`.
+The site is **free**, with no sign-in. `GET /api/config` returns `mode: free_web` and `upload_allowed: true` on Vercel. On Vercel, `DQD_FREE_UPLOADS_DISABLED=1` is the emergency switch to revert to bundled-example-only mode, with all uploads returning HTTP 403. The old `DQD_PUBLIC_DEMO_ONLY` variable is ignored on Vercel because its legacy value should never disable the free app. For local development, `DQD_PUBLIC_DEMO_ONLY=1` still enables sample-only mode.
 
 ### What the app actually does
 
