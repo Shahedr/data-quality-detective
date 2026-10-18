@@ -115,8 +115,8 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 <body>
 <header><div class="shell top">
   <div class="brand"><span class="brand-mark">◈</span><span>Data Quality Detective</span></div>
-  <nav aria-label="Website"><a href="/product" style="color:#3157c3;font-weight:700;margin-right:14px">About & plans</a><a href="/privacy" style="color:#586981;margin-right:14px">Privacy</a><a href="/terms" style="color:#586981;margin-right:14px">Terms</a></nav>
-  <span class="preview" id="modeTag">LOCAL WORKSPACE</span>
+  <nav aria-label="Website"><a href="https://github.com/Shahedr/data-quality-detective" rel="noopener noreferrer" target="_blank" style="color:#3157c3;font-weight:700">GitHub · Free & open source ↗</a></nav>
+  <span class="preview" id="modeTag">FREE · NO ACCOUNT</span>
 </div></header>
 <main class="shell">
   <div class="eyebrow">Data confidence, in a few clicks</div>
@@ -128,7 +128,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="drop" id="drop">
         <div class="upload-icon">↥</div>
         <strong id="fileTitle">Drag and drop a file here</strong>
-        <div class="muted">CSV or Excel (.xlsx / .xlsm) · up to 10 MB · 100,000 rows total · 200 columns/sheet · 40 sheets in this preview</div>
+        <div class="muted">CSV or Excel (.xlsx / .xlsm) · up to 4 MB online (10 MB locally) · 100,000 rows · 40 sheets</div>
         <div class="actions">
           <button class="primary" id="choose">Choose file</button>
           <button class="secondary" id="sample">Try example data</button>
@@ -140,7 +140,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <h3>What gets checked?</h3>
       <p>Every column is profiled with the same proven Python checks used by our <strong>dqdetect</strong> command-line tool.</p>
       <span class="cap">Missing data</span><span class="cap">Duplicates</span><span class="cap">Invalid dates</span><span class="cap">Outliers</span><span class="cap">Mixed types</span>
-<div class="notice" id="dataNotice">Local development tool: no accounts or payments. Uploaded files are processed by your local server. Do not expose it publicly or upload sensitive data to an untrusted service.</div>
+<div class="notice" id="dataNotice">Free, no account or payment. Files are sent to the server for analysis and are not intentionally saved in an application database. Hosting infrastructure may temporarily process or log request information. <strong>Do not upload sensitive, regulated or confidential data.</strong> For private files, run the open-source app locally.</div>
       <div class="notice"><strong>Excel power users:</strong> A separate local
       <a href="https://github.com/Shahedr/data-quality-detective/blob/main/webapp/NATIVE_EXCEL.md" target="_blank" rel="noopener noreferrer">Excel-native formula / approved VBA test runner</a>
       is available for Windows. VBA cannot execute through this upload page.</div>
@@ -226,7 +226,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
     </div>
   </section>
 </main>
-<footer><div class="shell">Data Quality Detective · Results are diagnostic, not automatic corrections. · <a href="/product">Product & plans</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div></footer>
+<footer><div class="shell">Data Quality Detective · Free open-source software · Results are diagnostic, not automatic corrections. · <a href="https://github.com/Shahedr/data-quality-detective" target="_blank" rel="noopener noreferrer">Source & local install</a></div></footer>
 <script src="/spreadsheet.js"></script>
 <script>
 "use strict";
@@ -349,7 +349,17 @@ async function initializeMode(){
     if(!response.ok)return;
     const mode=await response.json();
     demoMode=!!mode.public_demo;
-    if(!demoMode)return;
+    if(!demoMode){
+      const hosted=mode.mode==="free_web";
+      $("modeTag").textContent=hosted?"FREE WEB TOOL":"FREE LOCAL WORKSPACE";
+      document.querySelector("#drop .muted").textContent=hosted
+        ?"CSV, XLSX or XLSM · max 4 MB per file · 100,000 data rows · 40 sheets"
+        :"CSV, XLSX or XLSM · max 10 MB per file · 100,000 data rows · 40 sheets";
+      $("dataNotice").textContent=hosted
+        ?"Free and no sign-in. Uploaded files are sent to Vercel for analysis; no persistent application file storage is used, but transient files and infrastructure logs may exist. Never upload confidential or regulated data. Run locally for private work."
+        :"Free local tool: your files are processed by the server on this computer. No sign-in or payments.";
+      return;
+    }
     document.getElementById("modeTag").textContent="PUBLIC SAMPLE DEMO";
     document.querySelector(".lead").textContent=
       "Explore the Data Quality Detective dashboard with bundled sample data. No personal file uploads are allowed in this public preview.";
@@ -386,6 +396,8 @@ async function analyzeFile(file,sheet=""){
   if(demoMode){setStatus("Public demo uploads are disabled. Please use the example.",true);return;}
   if(running)return;
   if(!file)return;
+  const maxBytes=document.getElementById("modeTag").textContent==="FREE WEB TOOL"?4*1024*1024:10*1024*1024;
+  if(file.size>maxBytes){setStatus("File is too large. Web limit: 4 MB; local limit: 10 MB.",true);return;}
   running=true;$("choose").disabled=true;$("sample").disabled=true;
   setStatus("Analyzing "+file.name+" …");
   $("fileTitle").textContent=file.name;

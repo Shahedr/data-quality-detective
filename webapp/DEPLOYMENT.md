@@ -1,82 +1,35 @@
-# Deployment and distribution
+# Free web app: deployment and limits
 
-## What is available
+Public URL: **https://data-quality-detective-demo.vercel.app**
 
-**Local full application** (Windows, macOS, Linux): CSV/XLSX/XLSM upload
-analysis, all-sheet grid and audit exports. Windows users with desktop Excel
-can separately launch supervised formula testing and explicitly approved VBA
-checks. No workbook needs to leave the local computer for this workflow.
+Data Quality Detective is a free, open-source CSV/XLSX/XLSM quality auditor. It has no subscriptions, registrations, Supabase requirement, or Stripe integration. The Python CLI and locally hosted web app remain independently installable.
 
-**Public web demo** (Vercel): a sample-only interactive web application.
-It intentionally **rejects every user-upload endpoint with HTTP 403**.
-Only bundled fictional CSV sample data is profiled, paged, and exported.
-Excel/VBA execution is **never available through any web endpoint**.
+## Hosting on Vercel
 
-Vercel sets the environment variable `VERCEL`, so the backend
-**fails closed to sample-only mode** even if
-`DQD_PUBLIC_DEMO_ONLY` was accidentally omitted. Other environments
-can explicitly set `DQD_PUBLIC_DEMO_ONLY=1` to preview the hosted demo.
+The root `app.py` exports the FastAPI application. Set the project root to the repository root and deploy the `main` branch using the normal Vercel Python/FastAPI integration. The required hosting dependencies are in `pyproject.toml` (`requirements.txt` also installs the `web` extra). Do not add a catch-all rewrite to `/api/index.py`.
 
-### Vercel deployment
+The site is **free**, with no sign-in. `GET /api/config` returns `mode: free_web` and `upload_allowed: true` on Vercel. On Vercel, `DQD_FREE_UPLOADS_DISABLED=1` is the emergency switch to revert to bundled-example-only mode, with all uploads returning HTTP 403. The old `DQD_PUBLIC_DEMO_ONLY` variable is ignored on Vercel because its legacy value should never disable the free app. For local development, `DQD_PUBLIC_DEMO_ONLY=1` still enables sample-only mode.
 
-The repository includes root-level `app.py` and `requirements.txt`.
-Choose the **FastAPI** framework, leave the project root at the repository
-root, and use Vercel's native root-level FastAPI entrypoint. **Do not add
-a catch-all rewrite to `/api/index.py`**: that configuration was
-successfully built but returned HTTP 404 for every actual route.
+### What the app actually does
 
-**Live sample-only demo:** https://data-quality-detective-demo.vercel.app
+- Receives uploaded spreadsheet bytes at `POST /api/analyze` for server-side parsing and returns a JSON quality report.
+- `POST /api/rows` provides filtered, virtual-scrolling row pages; the file is transmitted to the server again for uncached pages.
+- `POST /api/export/html` returns a standalone full read-only spreadsheet report. `POST /api/export/xlsx` returns a separate values-only workbook with quality annotations. **No source file is modified.**
+- File content isn't intentionally stored in a persistent app database or object storage. However multipart uploads may spool to transient serverless storage, and network/cloud providers can keep operational logs. Do not claim in-browser-only processing or zero retention.
 
-The initial public demo was deployed directly via Vercel because the
-connected Vercel API account reported no GitHub Login Connection at
-the time. The direct deployment has **no Git-linked automatic redeployment**,
-and installs a **specific tested GitHub commit**.
-To enable automatic updates, link the `main` branch of
-`Shahedr/data-quality-detective` in Vercel's project **Settings → Git**
-once the Vercel account's GitHub Login Connection is visible.
-Set `DQD_PUBLIC_DEMO_ONLY=1` explicitly for clarity (deployments on Vercel
-already fail closed to demo mode via the `VERCEL` environment variable).
-Keep the hosted deployment sample-only.
+### Host limits and safety caveats
 
-Once deployed, verify:
+- Hosted request total: **4 MiB file + 64 KiB multipart overhead**, checked against `Content-Length` before multipart parsing; missing/invalid length is rejected. Individual file size is also checked after parsing. Vercel may enforce a stricter platform request-size limit.
+- Local file limit remains 10 MiB. The shared parser additionally caps 100,000 data rows across worksheets, 200 columns per sheet, 40 sheets, 2,000 ZIP members, and 250 MiB decompressed ZIP metadata size. These bounds mitigate but do not eliminate malicious-content and resource exhaustion risks.
+- The web service NEVER executes VBA, macros, Excel formula recalculation or external workbook connections. XLSM macros are treated as nonexecuted content.
+- There are no user accounts, background job queues, hosting-level quotas, or tenant-based records. A free public endpoint can be abused and hosting can suspend/limit it. This is **not a verified safe environment for personal/regulated/confidential data**. For private files, recommend the local mode.
 
-- `GET /` loads the demo interface and **Explore interactive demo** works.
-- `GET /api/config` reports `public_demo` and `upload_allowed=false`.
-- `GET /api/demo/analyze` returns results for exactly 12 sample rows.
-- `GET /api/demo/rows?issue=duplicate` returns 2 flagged rows.
-- `GET /api/demo/export/html` and `/api/demo/export/xlsx` return sample reports.
-- `POST /api/analyze` (even with arbitrary XLSM bytes) returns HTTP **403**.
-- No macro execution or uploaded-file processing is exposed remotely.
+## Operator verification after each deployment
 
-Public Vercel hosting is NOT the finished commercial product. Do not advertise
-private-dataset processing, customer isolation, enterprise compliance,
-data-protection guarantees, billing, or production Excel execution.
+The GitHub `production-safety-smoke.yml` checks real live HTTP behavior: `/api/config` reports free uploads, uploaded 3-row CSV is analyzed, paged rows and HTML/XLSX reports work, oversized and unsupported files are rejected, and all old SaaS routes return 404. It must pass on the public alias after promotion.
 
-## Windows: one-click full local version
+Keep the repository open source and avoid enabling unknown third-party analytics or upload storage without documenting them.
 
-1. Download the repository ZIP and extract the project to a folder.
-2. Double-click `INSTALL_ON_WINDOWS.cmd` once to install dependencies.
-3. Double-click `START_DATA_QUALITY_DETECTIVE.cmd` to launch the browser
-   app automatically on the first free local port between 8000 and 8099.
-4. Optionally double-click `START_EXCEL_VALIDATOR.cmd` to open real Excel
-   calculation testing in a separate supervised Windows window.
+## Local Windows application
 
-The script always uses `127.0.0.1` (your own computer), never `0.0.0.0`.
-Do not expose the local FastAPI server to the public internet.
-
-## Requirements before a customer-upload SaaS launch
-
-- Account sign-in, organization authorization, and tenant isolation.
-- Authenticated uploads, measured bandwidth/CPU limits, async job queues,
-  per-user quotas, and storage encryption/expiry/deletion.
-- Threat modeling and an independent security review, including
-  malicious uploads, decompression bombs, files with complex Excel objects,
-  and denial-of-service risks.
-- User consent, privacy/retention policy, logging/monitoring, incident response.
-- Payment/webhook flow and operational tests.
-- Separately isolated Windows execution hosts for untrusted VBA, if that
-  feature is ever made available; **never run third-party VBA on the web app
-  server or a normal user desktop**.
-
-The current cloud demo is specifically designed to avoid promising any of
-these still-unbuilt protections.
+Download ZIP, run `INSTALL_ON_WINDOWS.cmd`, then `START_DATA_QUALITY_DETECTIVE.cmd` to launch the web UI on 127.0.0.1. A separate supervised `START_EXCEL_VALIDATOR.cmd` command exposes local Windows Excel automation for experts, never a public web endpoint.
