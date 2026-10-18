@@ -7,7 +7,6 @@ in the SaaS database. Multipart parsers may spool content to ephemeral disk.
 Requires Supabase asymmetric JWT, Postgres and Stripe credentials; do NOT
 activate customer uploads until a production security/privacy review.
 """
-import io
 import os
 import re
 from datetime import datetime, timezone
@@ -27,7 +26,29 @@ from dqdetect.profiler import profile_dataframe
 from webapp.export import full_html_chunks, full_workbook_html_chunks
 from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.workbook import parse_sheets, validate_upload
-from webapp.app_core import analyze_bytes, inspect_bytes, _read_dataset, _workbook_macro_audit
+
+
+# Lazy delegation avoids importing the local web app during private-router startup.
+# These core functions are identical to those used in the offline browser.
+def analyze_bytes(*args, **kwargs):
+    from webapp.app import analyze_bytes as handler
+    return handler(*args, **kwargs)
+
+
+def inspect_bytes(*args, **kwargs):
+    from webapp.app import inspect_bytes as handler
+    return handler(*args, **kwargs)
+
+
+def _read_dataset(*args, **kwargs):
+    from webapp.app import _read_dataset as handler
+    return handler(*args, **kwargs)
+
+
+def _workbook_macro_audit(*args, **kwargs):
+    from webapp.app import _workbook_macro_audit as handler
+    return handler(*args, **kwargs)
+
 
 router = APIRouter(prefix="/api/saas", tags=["Private SaaS beta"])
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
