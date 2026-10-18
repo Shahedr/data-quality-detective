@@ -420,10 +420,12 @@ async def stripe_webhook(request: Request):
                     # Customer identity remains tied to the Supabase account.
                     cur.execute(
                         "UPDATE saas_accounts SET stripe_customer_id=%s, "
-                        "subscription_id=%s, subscription_status=%s "
-                        "WHERE user_id=%s AND (stripe_customer_id IS NULL OR stripe_customer_id=%s)",
+                        "subscription_id=%s, subscription_status=%s, subscription_event_at=%s "
+                        "WHERE user_id=%s AND (stripe_customer_id IS NULL OR stripe_customer_id=%s) "
+                        "AND subscription_event_at <= %s",
                         (item["customer"], item["id"], item.get("status", "unknown"),
-                         user, item["customer"]),
+                         int(event.get("created", 0)), user, item["customer"],
+                         int(event.get("created", 0))),
                     )
     return {"received": True}
 
