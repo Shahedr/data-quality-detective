@@ -1,6 +1,16 @@
 # Data Quality Detective SaaS — launch readiness
 
-STATUS: PRIVATE-BETA SOURCE CODE. CUSTOMER UPLOADS AND CHARGES MUST REMAIN DISABLED UNTIL APPROVED.
+STATUS: PUBLIC SAMPLE DEMO + MFA-ONLY PRIVATE OWNER DASHBOARD LIVE. CUSTOMER UPLOADS, PUBLIC SAAS SIGNUPS AND CHARGES MUST REMAIN DISABLED UNTIL APPROVED.
+
+## Verified deployment and owner access (2026-10-18)
+- PR #24 fixed missing FastAPI dependency in Vercel Git-source builds; issue #17 is closed following strict full-application preview tests.
+- PR #25 added a Supabase MFA-gated aggregate dashboard. One identity (verified Auth email with enrolled TOTP) is allowlisted in a `private` schema, and browser roles cannot read any internal tables. Function rejects unauthenticated, non-owner and non-MFA calls.
+- PR #26 added a permanent production public-demo safety smoke. The first run revealed the public alias was still pinned to an old direct deployment; its failure was genuine. The alias was intentionally reassigned to a verified Git-source production deployment and the original failed run was rerun successfully. Separate public-alias GitHub smoke also passed.
+- Public domain `https://data-quality-detective-demo.vercel.app` now serves owner `/admin` with aggregate counts while sample-only public endpoints remain closed to uploaded files and paid checkout. Real-browser MFA owner RPC still requires owner sign-in on this origin; SQL-editor synthetic JWT tests are not a substitute.
+- Vercel `DQD_SAAS_ENABLED=0` and `DQD_SAAS_LAUNCH_APPROVED=0` were independently checked before enabling only admin flags. Uploaded customer files and payments remain disabled.
+- Supabase security advisor warning on the deliberate owner SECDEF RPC is documented in `saas/OWNER_DASHBOARD_SECURITY.md`. Leaked-password protection remains a real separate **WARN** and requires Auth configuration evaluation.
+- Stripe's connected merchant identity and environment have NOT been inspected yet; do not assume a linked or historical merchant belongs to this product.
+
 
 The public sample demo remains a separate upload-free product. The new SaaS endpoints require authentication and two independent environment flags (DQD_SAAS_ENABLED and DQD_SAAS_LAUNCH_APPROVED). Missing required configuration fails closed.
 
@@ -8,9 +18,15 @@ The public sample demo remains a separate upload-free product. The new SaaS endp
 
 1. Supabase: create a project, enable confirmed-email authentication using asymmetric RS256 or ES256 JWT keys, configure exact HTTPS redirect origin. Run the SQL in saas/schema.sql through an authorized SQL editor, confirm RLS, no anon grants, TLS and backup policy. Use a limited-privilege direct PostgreSQL account for the server.
 2. Stripe: create a recurring Pro subscription product/price, configure customer portal and webhook for checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted. Perform test-mode checkout, cancellation, failed payment, event replay and entitlement tests. Use signed webhooks. Do not turn on live charges without explicit operator approval.
-3. Vercel: build from root app.py using FastAPI and install Python with [web,saas]. Keep all secrets in project environment variables and never in git or client code.
+3. Vercel: build from root app.py using FastAPI; core `pyproject.toml` dependencies now include web startup packages to satisfy Git-source Python runtime. Preview and production smoke tests reject placeholder HTML and require real app JSON. Keep all secrets in project environment variables and never in git or client code.
 
-Required environment variables: DQD_SAAS_ENABLED=0; DQD_SAAS_LAUNCH_APPROVED=0; SUPABASE_URL; SUPABASE_ANON_KEY (public); DQD_SAAS_DATABASE_URL (private, sslmode=require); STRIPE_SECRET_KEY; STRIPE_WEBHOOK_SECRET; STRIPE_PRO_PRICE_ID; DQD_SITE_URL (HTTPS); DQD_LEGAL_ENTITY (real registered operator); DQD_PRIVACY_EMAIL (monitored contact).
+Required environment variables: DQD_SAAS_ENABLED=0; DQD_SAAS_LAUNCH_APPROVED=0; DQD_NEW_STRIPE_ACCOUNT_VERIFIED unset/0; DQD_LIVE_PAYMENTS_APPROVED unset/0; SUPABASE_URL; SUPABASE_ANON_KEY (public); DQD_SAAS_DATABASE_URL (private, sslmode=require); STRIPE_SECRET_KEY; STRIPE_WEBHOOK_SECRET; STRIPE_PRO_PRICE_ID; DQD_SITE_URL (HTTPS); DQD_LEGAL_ENTITY (real registered operator); DQD_PRIVACY_EMAIL (monitored contact).
+
+## Live Stripe protection
+- Application supports `sk_test_` Stripe keys for **future isolated test-mode integration only**. It does not charge or contact Stripe until separately approved customer endpoints are activated.
+- A `sk_live_` key **cannot** make customer SaaS ready unless all four independently controlled variables are `1`: `DQD_SAAS_ENABLED`, `DQD_SAAS_LAUNCH_APPROVED`, `DQD_NEW_STRIPE_ACCOUNT_VERIFIED`, and `DQD_LIVE_PAYMENTS_APPROVED`. Do not set any of these to `1` until identity, legal and end-to-end security testing passes.
+- Verify via the actual new Stripe **business** account, not the user's unrelated historical merchant. Confirm test-mode account identity, configured price and webhook signing key under private provider settings. Do not send keys through chat/GitHub.
+- Merchant approval and the correct price cannot be inferred from a connected Stripe app alone.
 
 ## Mandatory release checklist
 
