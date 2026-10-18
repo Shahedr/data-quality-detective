@@ -21,6 +21,7 @@
 <p id="mfaSecret" class="muted"></p>
 <label>Six-digit authenticator code<input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></label>
 <div class="row"><button id="enroll" class="secondary">Set up authenticator</button><button id="verify">Verify code</button><button id="signoutMfa" class="secondary">Sign out</button></div></section>
+<section id="setupComplete" class="panel hidden"><h2>Authenticator setup verified</h2><p>Your sign-in now has a verified authenticator factor. Read-only owner metrics remain disabled until separate database and production-security checks pass.</p><button id="signoutSetup" class="secondary">Sign out</button></section>
 <section id="overview" class="panel hidden"><div class="split"><h2>Private service overview</h2><button id="signout" class="secondary">Sign out</button></div>
 <dl><dt>DQD accounts</dt><dd id="accounts">—</dd><dt>Active Pro accounts</dt><dd id="active">—</dd>
 <dt>Recorded analyses (all-time)</dt><dd id="analyses">—</dd><dt>Processed Stripe webhook events</dt><dd id="webhooks">—</dd></dl>

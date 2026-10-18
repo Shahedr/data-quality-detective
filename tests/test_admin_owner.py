@@ -149,3 +149,46 @@ def test_owner_javascript_syntax_and_disabled_sdk_gate():
         result = subprocess.run(["node", "--check", str(script)],
                                 capture_output=True, text=True, timeout=15)
         assert result.returncode == 0, result.stderr
+
+
+
+def test_invited_owner_can_enroll_mfa_without_database_or_customer_launch(monkeypatch):
+    """Only browser-side Auth setup opens; no API access to account/usage metrics."""
+    owner = str(uuid.uuid4())
+    monkeypatch.setenv("DQD_ADMIN_USER_ID", owner)
+    monkeypatch.setenv("DQD_ADMIN_SETUP_ENABLED", "1")
+    monkeypatch.setenv("DQD_ADMIN_ENABLED", "0")
+    monkeypatch.setenv("SUPABASE_URL", "https://sample-project.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "public-test-key")
+    monkeypatch.delenv("DQD_SAAS_DATABASE_URL", raising=False)
+    monkeypatch.setenv("DQD_SAAS_ENABLED", "0")
+    monkeypatch.setenv("DQD_SAAS_LAUNCH_APPROVED", "0")
+    assert saas.admin_auth_ready() is True
+    assert saas.admin_ready() is False
+    assert saas.ready() is False
+    data = client.get("/api/saas/admin/config").json()
+    assert data["enabled"] is True
+    assert data["overview_enabled"] is False
+    assert data["mfa_required"] is True
+    assert data["supabase_anon_key"] == "public-test-key"
+    assert owner not in str(data)
+    assert client.get("/api/saas/admin/overview").status_code == 503
+    assert client.get("/api/saas/account").status_code == 503
+    assert client.post("/api/saas/analyze",
+                       files={"file": ("private.csv", b"c\\n1\\n")}).status_code == 503
+    html = client.get("/admin").text
+    script = client.get("/admin.js").text
+    assert "setupComplete" in html
+    assert "if (cfg.overview_enabled) await overview();" in script
+
+
+def test_unconfigured_owner_cannot_expose_setup_even_with_flag(monkeypatch):
+    monkeypatch.setenv("DQD_ADMIN_SETUP_ENABLED", "1")
+    monkeypatch.setenv("DQD_ADMIN_ENABLED", "0")
+    monkeypatch.delenv("DQD_ADMIN_USER_ID", raising=False)
+    monkeypatch.setenv("SUPABASE_URL", "https://sample-project.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "public-test-key")
+    assert saas.admin_auth_ready() is False
+    config = client.get("/api/saas/admin/config").json()
+    assert config["enabled"] is False
+    assert config["supabase_anon_key"] is None

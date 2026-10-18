@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const show = (id,visible) => $(id).classList.toggle("hidden",!visible);
   const status = message => $("status").textContent = message;
-  let client = null, factorId = null;
+  let client = null, factorId = null, cfg = null;
   async function getToken(){
     const {data,error} = await client.auth.getSession();
     if (error || !data.session?.access_token) throw Error("Sign in again.");
@@ -27,12 +27,16 @@
     status("Owner access verified · Read-only.");
   }
   async function refresh(){
-    for (const id of ["login","mfa","overview"]) show(id,false);
+    for (const id of ["login","mfa","overview","setupComplete"]) show(id,false);
     const {data}=await client.auth.getSession();
     if (!data.session){show("login",true);status("Owner sign-in required.");return;}
     const {data:assurance,error}=await client.auth.mfa.getAuthenticatorAssuranceLevel();
     if (error) throw error;
-    if (assurance.currentLevel==="aal2"){await overview();return;}
+    if (assurance.currentLevel==="aal2"){
+      if (cfg.overview_enabled) await overview();
+      else {show("setupComplete",true);status("Authenticator verified. Owner setup complete; dashboard access is still gated.");}
+      return;
+    }
     const {data:factors,error:fError}=await client.auth.mfa.listFactors();
     if (fError) throw fError;
     const verified=(factors.totp||[]).find(f=>f.status==="verified");
@@ -91,7 +95,7 @@
     try{
       const response=await fetch("/api/saas/admin/config",{cache:"no-store"});
       if(!response.ok)throw Error("Owner configuration is unavailable.");
-      const cfg=await response.json();
+      cfg=await response.json();
       if(!cfg.enabled){show("unavailable",true);status("Admin access is not yet configured.");return;}
       await new Promise((resolve,reject)=>{
         const script=document.createElement("script");
@@ -109,6 +113,7 @@
       $("verify").onclick=verify;
       $("signout").onclick=signOut;
       $("signoutMfa").onclick=signOut;
+      $("signoutSetup").onclick=signOut;
       await refresh();
     }catch(e){show("unavailable",true);status("Owner console error: "+e.message);}
   }
