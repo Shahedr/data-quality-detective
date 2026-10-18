@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owner console (private) | Data Quality Detective</title>
+<link rel="stylesheet" href="/saas.css"><script defer src="/admin.js"></script></head>
+<body><header class="top"><a href="/" class="brand">◈ Data Quality Detective</a><nav><a href="/">Public demo</a><a href="/privacy">Privacy</a></nav></header>
+<main>
+<p class="eyebrow">OWNER-ONLY · READ-ONLY ADMINISTRATION</p>
+<h1>Private owner console</h1>
+<p class="notice">This console is accessible only to an explicitly configured Supabase owner user with multi-factor authentication. It shows aggregate metrics; it does not display or download customer spreadsheets, passwords, payment cards, or email lists. It does not open customer signups or payments.</p>
+<p id="status" role="status" aria-live="polite">Checking owner-console availability…</p>
+<section id="unavailable" class="panel hidden"><h2>Owner console is not configured yet</h2>
+<p>Owner identity, Supabase Auth login and MFA must be verified. The public sample demo remains separate.</p></section>
+<section id="login" class="panel hidden"><h2>Sign in with your Supabase owner account</h2>
+<label>Email<input id="email" type="email" autocomplete="email"></label>
+<label>Password<input id="password" type="password" autocomplete="current-password"></label>
+<div class="row"><button id="signin">Sign in</button></div>
+<p class="muted">No credentials are stored by this page beyond the Supabase Auth session.</p></section>
+<section id="mfa" class="panel hidden"><h2>Multi-factor authentication required</h2>
+<p id="mfaMessage">A verified authenticator-app code is required for owner access.</p>
+<img id="qr" class="hidden" width="185" height="185" alt="QR code to enroll an authenticator app">
+<p id="mfaSecret" class="muted"></p>
+<label>Six-digit authenticator code<input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></label>
+<div class="row"><button id="enroll" class="secondary">Set up authenticator</button><button id="verify">Verify code</button><button id="signoutMfa" class="secondary">Sign out</button></div></section>
+<section id="overview" class="panel hidden"><div class="split"><h2>Private service overview</h2><button id="signout" class="secondary">Sign out</button></div>
+<dl><dt>DQD accounts</dt><dd id="accounts">—</dd><dt>Active Pro accounts</dt><dd id="active">—</dd>
+<dt>Recorded analyses (all-time)</dt><dd id="analyses">—</dd><dt>Processed Stripe webhook events</dt><dd id="webhooks">—</dd></dl>
+<p class="muted">Counts come from the private database. Supabase Auth users and Stripe's billing records are managed separately. No destructive admin controls are exposed here.</p></section>
+</main></body></html>
