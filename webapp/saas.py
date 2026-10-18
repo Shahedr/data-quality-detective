@@ -332,6 +332,26 @@ async def export_excel(file: UploadFile = File(...),
     )
 
 
+def _is_pro_subscription(subscription, expected_price):
+    """Grant Pro only for this application's configured recurring Stripe price.
+
+    Webhook signatures authenticate Stripe as sender, not that an arbitrary
+    subscription/product matches the plan the service is selling.
+    """
+    if not isinstance(subscription, dict) or not expected_price:
+        return False
+    items = subscription.get("items")
+    if not isinstance(items, dict) or not isinstance(items.get("data"), list):
+        return False
+    for entry in items["data"]:
+        if not isinstance(entry, dict):
+            continue
+        price = entry.get("price")
+        if isinstance(price, dict) and price.get("id") == expected_price:
+            return True
+    return False
+
+
 @router.post("/billing/checkout")
 def create_checkout(subject: str = Depends(account_id)):
     stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
@@ -341,6 +361,8 @@ def create_checkout(subject: str = Depends(account_id)):
             account = _plan(cur, subject)
             if account["subscription_status"] in ACTIVE_STATUSES:
                 raise HTTPException(409, "Your subscription is already active.")
+            if account["subscription_status"] in {"past_due", "unpaid", "paused", "incomplete"}:
+                raise HTTPException(409, "Manage your current subscription in Billing before starting another.")
     params = {
         "mode": "subscription",
         "line_items": [{"price": os.environ["STRIPE_PRO_PRICE_ID"], "quantity": 1}],
@@ -350,6 +372,9 @@ def create_checkout(subject: str = Depends(account_id)):
         "subscription_data": {"metadata": {"dqd_user_id": subject}},
         "allow_promotion_codes": False,
     }
+    # Reuse an existing verified customer instead of creating duplicates.
+    if account["stripe_customer_id"]:
+        params["customer"] = account["stripe_customer_id"]
     try:
         session = stripe.checkout.Session.create(**params)
     except stripe.error.StripeError:
@@ -415,7 +440,10 @@ async def stripe_webhook(request: Request):
             }:
                 metadata = item.get("metadata") or {}
                 user = metadata.get("dqd_user_id")
-                if user and item.get("id") and item.get("customer"):
+                if (user and item.get("id") and item.get("customer")
+                        and _is_pro_subscription(item, os.environ["STRIPE_PRO_PRICE_ID"])):
+                    # Only subscriptions for our exact configured Pro price
+                    # are allowed to change the user's quota/entitlement.
                     # A renewal event can arrive before the Checkout event.
                     # Customer identity remains tied to the Supabase account.
                     cur.execute(
