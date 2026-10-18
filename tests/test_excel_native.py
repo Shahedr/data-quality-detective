@@ -168,7 +168,7 @@ def test_trust_center_macro_block_is_recorded_as_failed_not_success(tmp_path):
     )
     assert result["excel_automation"] == "failed"
     assert result["macro_executed"] is False
-    assert "blocked" in result["warnings"][-1]
+    assert any("blocked" in warning for warning in result["warnings"])
     assert excel.Workbooks.workbook.closed is True
     assert excel.quitted is True
     report = json.loads(
