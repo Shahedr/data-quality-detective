@@ -35,9 +35,19 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Information Analysis"
 ]
+# Vercel Git-source Python builder installs [project].dependencies.
+# Runtime imports cannot depend solely on optional extras in requirements.txt;
+# keep the hosted FastAPI/SaaS modules importable by the Git deployment.
+# Customer SaaS and billing still require their separate approval flags.
 dependencies = [
   "pandas>=2.2",
-  "openpyxl>=3.1"
+  "openpyxl>=3.1",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "python-multipart>=0.0.9",
+  "PyJWT[crypto]>=2.9,<3",
+  "psycopg[binary]>=3.2,<4",
+  "stripe>=11,<15"
 ]
 
 [project.optional-dependencies]
