@@ -5,12 +5,12 @@ issue register, not an Excel/VBA replica. Strings (especially those beginning
 with '=' or '+' etc.) are forced to literal cells, never executable formulas.
 The output is generated with openpyxl write-only sheets to bound memory.
 """
-from collections import Counter
 from tempfile import TemporaryFile
 
 import pandas as pd
 from fastapi import HTTPException
 from openpyxl import Workbook
+from openpyxl.utils.cell import get_column_letter
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font, PatternFill
 
@@ -89,9 +89,12 @@ def build_review_workbook(frames, reviews, profiles, source_filename, macro_audi
     """
     _validate_size(frames)
     book = Workbook(write_only=True)
-    used = {name.casefold() for name in frames}
-    summary = book.create_sheet(_safe_title("DQD Audit Overview", used))
-    issues = book.create_sheet(_safe_title("DQD Issue Register", used))
+    reserved = {name.casefold() for name in frames}
+    summary = book.create_sheet(_safe_title("DQD Audit Overview", reserved))
+    issues = book.create_sheet(_safe_title("DQD Issue Register", reserved))
+    # Preserve original worksheet names unless they truly collide with the
+    # two generated tabs (those are pre-renamed above).
+    used = {summary.title.casefold(), issues.title.casefold()}
     summary.freeze_panes = "B5"
     issues.freeze_panes = "D2"
     summary.append([_cell(summary, "DATA QUALITY DETECTIVE — EXCEL REVIEW", bold=True)])
@@ -167,7 +170,6 @@ def build_review_workbook(frames, reviews, profiles, source_filename, macro_audi
                 cells.append(_cell(tab, text, fill))
                 for kind in found:
                     if register_written < MAX_ISSUE_REGISTER_ROWS:
-                        from openpyxl.utils.cell import get_column_letter
                         original_ref = get_column_letter(col + 1) + str(pos + 2)
                         issues.append([
                             _cell(issues, title), _cell(issues, pos + 1),
