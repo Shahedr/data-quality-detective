@@ -56,8 +56,36 @@
       if(error)throw error;
       $("password").value="";
       await refresh();
-    }catch(e){status("Sign-in failed: "+e.message)}
+    }catch(e){
+      const badPassword=/invalid login credentials/i.test(e.message||"");
+      status(badPassword
+        ?"Email/password sign-in failed. The password for this application's Supabase Auth user may differ from your Supabase dashboard password. Try the one-time email link below."
+        :"Sign-in failed: "+e.message);
+    }
     finally{$("signin").disabled=false;}
+  }
+  async function sendEmailLink(){
+    const button=$("emailLink");
+    button.disabled=true;
+    try{
+      const email=$("email").value.trim();
+      if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){
+        throw Error("Enter your account email address first.");
+      }
+      // Email authentication uses the existing Supabase user only:
+      // never create a new public account while this app is in private beta.
+      const {error}=await client.auth.signInWithOtp({
+        email,
+        options:{
+          shouldCreateUser:false,
+          emailRedirectTo:window.location.origin+"/admin"
+        }
+      });
+      if(error)throw error;
+      status("Check your inbox for the one-time sign-in link. Open it in this browser. Do not share the link.");
+    }catch(e){
+      status("Email sign-in could not start: "+e.message);
+    }finally{button.disabled=false;}
   }
   async function enroll(){
     try{
@@ -109,6 +137,7 @@
         auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}
       });
       $("signin").onclick=signIn;
+      $("emailLink").onclick=sendEmailLink;
       $("enroll").onclick=enroll;
       $("verify").onclick=verify;
       $("signout").onclick=signOut;
