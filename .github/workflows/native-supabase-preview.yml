@@ -1,0 +1,48 @@
+name: Supabase-native preview strict smoke
+on:
+  push:
+    branches: [simplify/use-supabase-native-admin-only]
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check real deployed FastAPI endpoints and retired admin
+        env:
+          URL: https://data-quality-detective-demo-m8fduc552-shahedr2744-1751.vercel.app
+        run: |
+          python3 - <<'PY'
+          import json, os, time
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          base=os.environ['URL'].rstrip('/')
+          def call(path, method='GET', body=None):
+              req=Request(base+path, data=body, method=method,
+                          headers={'User-Agent':'DQD-native-supabase-smoke'})
+              try:
+                  with urlopen(req,timeout=25) as res:
+                      return res.status, res.headers.get('content-type',''), res.read(2*1024*1024)
+              except HTTPError as err:
+                  return err.code, err.headers.get('content-type',''), err.read(2*1024*1024)
+          for i in range(12):
+              code,typ,body=call('/api/config')
+              if code==200 and 'application/json' in typ:
+                  cfg=json.loads(body)
+                  if cfg.get('mode')=='public_demo' and cfg.get('upload_allowed') is False:
+                      break
+              time.sleep(5)
+          else: raise SystemExit('FastAPI demo did not return real sample-only JSON')
+          for path in ['/admin','/admin.js','/api/saas/admin/config','/api/saas/admin/overview']:
+              code,typ,body=call(path)
+              assert code==404,(path,code,body[:100])
+          for path,expected in [('/api/analyze',403),('/api/saas/analyze',503),('/api/saas/billing/checkout',503)]:
+              code,typ,body=call(path,'POST',b'')
+              assert code==expected,(path,code,body[:120])
+          code,typ,body=call('/api/saas/config')
+          assert code==200 and json.loads(body)['enabled'] is False
+          code,typ,body=call('/api/demo/analyze')
+          assert code==200 and json.loads(body)['summary']['rows']==12
+          print('SIMPLIFIED PREVIEW VERIFIED: retired admin 404, demo functional, uploads/billing closed',flush=True)
+          PY
