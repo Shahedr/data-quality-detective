@@ -37,8 +37,11 @@ _ROOT = Path(__file__).resolve().parent
 
 def _public_demo_only():
     """True ONLY for explicitly configured public sample-only deployments."""
-    # Optional sample-only override for staging / emergency shutdown.
-    return os.environ.get("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
+    # Old DQD_PUBLIC_DEMO_ONLY settings from the prior paid-era preview must
+    # never silently disable the public free webapp on Vercel.
+    if os.getenv("VERCEL"):
+        return os.getenv("DQD_FREE_UPLOADS_DISABLED", "").strip() == "1"
+    return os.getenv("DQD_PUBLIC_DEMO_ONLY", "").strip() == "1"
 
 
 def _sample_bytes():
