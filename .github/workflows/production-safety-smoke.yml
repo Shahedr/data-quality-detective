@@ -63,9 +63,17 @@ jobs:
           assert code==415,(code,raw[:200])
           code,typ,raw=call("/api/analyze","POST",b"x"*(5*1024*1024))
           assert code==413,(code,raw[:200])
-          for path in ("/app","/product","/privacy","/terms","/api/saas/config",
+          for path in ("/app","/product","/api/saas/config",
                        "/api/saas/analyze","/api/saas/billing/checkout"):
               code,typ,raw=call(path)
               assert code==404,(path,code)
+          for path in ("/privacy","/terms","/cookies"):
+              code,typ,raw=call(path)
+              assert code==200 and b"shahed2338@gmail.com" in raw,(path,code)
+          for path in ("/openapi.json",):
+              code,typ,raw=call(path)
+              assert code==404,(path,code)
+          code,typ,raw=call("/api/large/uploads","POST",b'{"name":"test.csv","size":100}',{"Content-Type":"application/json"})
+          assert code==404,(code,raw[:200])
           print("FREE WEBAPP PASS: CSV analysis, paged grid, HTML/XLSX exports; paid routes removed",flush=True)
           PY

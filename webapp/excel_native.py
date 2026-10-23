@@ -329,7 +329,7 @@ def run_native_audit(
             try:
                 pythoncom.CoUninitialize()
             except Exception:
-                pass
+                report['warnings'].append('Could not confirm COM cleanup.')
 
     # Compare hashes after Excel has finished. Macros can still write to
     # arbitrary paths: a copy alone does not protect other files.
