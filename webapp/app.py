@@ -20,17 +20,27 @@ from webapp.export import full_html_chunks, full_workbook_html_chunks
 from webapp.xlsx_export import build_review_workbook, stream_file_chunks
 from webapp.inspect import append_annotated_excerpt, inspect_dataframe, ISSUE_FILTERS
 from webapp.vba import audit_vba
+from webapp.workspace import (
+    clean_options, clean_frames, cleaned_workbook, explore, workbook_health,
+    template_audit, narrative,
+    parse_audit_mapping, template_definitions,
+)
+from webapp.preserve import preserve_workbook
+from webapp.largefiles import router as largefile_router, lifespan as largefile_lifespan
 from webapp.workbook import (
     MAX_FILE_BYTES, MAX_ROWS, MAX_COLUMNS, parse_sheets, select_sheet
 )
 
 app = FastAPI(
+    lifespan=largefile_lifespan,
     title="Data Quality Detective",
     description="Local CSV and multi-worksheet XLSX/XLSM quality auditor.",
     version="0.2.0-preview",
     docs_url=None,
     redoc_url=None,
+    openapi_url=None,
 )
+app.include_router(largefile_router)
 
 _ROOT = Path(__file__).resolve().parent
 
@@ -64,39 +74,68 @@ def _review_xlsx_for_frames(frames, reviews, filename):
 HOSTED_MAX_FILE_BYTES = 4 * 1024 * 1024
 HOSTED_MAX_REQUEST_BYTES = HOSTED_MAX_FILE_BYTES + 64 * 1024
 _UPLOAD_PATHS = frozenset({
-    "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx"
+    "/api/analyze", "/api/rows", "/api/export/html", "/api/export/xlsx",
+    "/api/workspace", "/api/clean/preview", "/api/clean/export", "/api/large/uploads"
 })
 
 
 @app.middleware("http")
 async def security_headers(request, call_next):
     path = request.url.path
-    if path in _UPLOAD_PATHS and request.method == "POST" and _public_demo_only():
+    upload_path = path in _UPLOAD_PATHS or bool(re.fullmatch(r'/api/large/uploads/[A-Za-z0-9_-]+/download', path))
+    if (not os.getenv('VERCEL') and (not request.client or
+            request.client.host not in {'127.0.0.1', '::1', 'testclient'} or
+            request.url.hostname not in {'127.0.0.1', 'localhost', '::1', 'testserver'})):
+        response = JSONResponse({'detail': 'Local server accepts loopback requests only.'}, status_code=403)
+    elif (request.method in {'POST', 'PUT', 'DELETE'} and request.headers.get('origin') and
+          request.headers['origin'] != str(request.base_url).rstrip('/')):
+        response = JSONResponse({'detail': 'Cross-origin requests are not allowed.'}, status_code=403)
+    elif upload_path and request.method == "POST" and _public_demo_only():
         response = JSONResponse(
             {"detail": "Sample-only mode is enabled; uploads are unavailable."},
             status_code=403,
         )
-    elif path in _UPLOAD_PATHS and request.method == "POST" and os.getenv("VERCEL"):
+    elif upload_path and request.method == "POST":
+        limit = HOSTED_MAX_REQUEST_BYTES if os.getenv('VERCEL') else MAX_FILE_BYTES + 64 * 1024
+        if path == '/api/large/uploads' or path.endswith('/download'):
+            limit = 8192
         length = request.headers.get("content-length", "")
         if not length.isascii() or not length.isdecimal():
             response = JSONResponse({"detail": "Content-Length is required."}, status_code=411)
-        elif int(length) > HOSTED_MAX_REQUEST_BYTES:
+        elif int(length) > limit:
             response = JSONResponse(
-                {"detail": "Public web uploads are limited to 4 MB."}, status_code=413
+                {"detail": "Public web uploads are limited to 4 MB." if os.getenv('VERCEL') else
+                 "Use the chunked large-file route for files above 10 MiB."}, status_code=413
             )
         else:
-            response = await call_next(request)
+            # Bound actual bytes before multipart parsing, even for a false Content-Length.
+            body = bytearray()
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > limit:
+                    break
+                body.extend(chunk)
+            else:
+                request._body = bytes(body)
+                response = await call_next(request)
+                body = None
+            if body is not None:
+                response = JSONResponse({'detail': 'Request body exceeds upload limit.'}, status_code=413)
     else:
         response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "no-referrer"
+    # Native same-origin POST downloads need an Origin; no-referrer can make it null.
+    response.headers["Referrer-Policy"] = "same-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = "base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    if os.getenv('VERCEL'):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
     if path == "/":
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; "
-            "script-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "connect-src 'self'; "
             "img-src 'self' data:; "
@@ -118,6 +157,81 @@ def spreadsheet_script():
     )
 
 
+@app.get("/workspace.js", include_in_schema=False)
+def workspace_script():
+    return FileResponse(_ROOT / "static" / "workspace.js", media_type="application/javascript")
+
+
+@app.get("/app.js", include_in_schema=False)
+def app_script():
+    return FileResponse(_ROOT / "static" / "app.js", media_type="application/javascript")
+
+
+@app.get("/preferences.js", include_in_schema=False)
+def preferences_script():
+    return FileResponse(_ROOT / "static" / "preferences.js", media_type="application/javascript")
+
+
+@app.get("/privacy", include_in_schema=False)
+@app.get("/cookies", include_in_schema=False)
+@app.get("/terms", include_in_schema=False)
+def privacy_information():
+    return FileResponse(_ROOT / "static" / "privacy.html", media_type="text/html")
+
+
+@app.post("/api/workspace")
+async def workspace(file: UploadFile = File(...), sheet: str = Form(""), template: str = Form(""), mapping: str = Form("{}")):
+    filename, data = await _get_upload(file)
+    frames, _ = parse_sheets(filename, data)
+    selected, frame = select_sheet(frames, sheet)
+    profile = profile_dataframe(frame, source_name=filename)
+    health = workbook_health(filename, data)
+    # IDs such as 001 and literal NA must keep their source meaning in templates.
+    if template:
+        literal_frames, _ = clean_frames(filename, data, clean_options("{}"))
+        _, literal_frame = select_sheet(literal_frames, sheet)
+        checks = template_audit(literal_frame, template, parse_audit_mapping(mapping))
+    else:
+        checks = []
+    return {"selected_sheet": selected, "charts": explore(frame), "health": health,
+            "templates": template_definitions(),
+            "template_checks": checks, "narrative": narrative(profile, health, template, checks)}
+
+
+@app.post("/api/clean/preview")
+async def clean_preview(file: UploadFile = File(...), options: str = Form("{}")):
+    filename, data = await _get_upload(file)
+    parsed = clean_options(options)
+    if filename.lower().endswith((".xlsx", ".xlsm")):
+        output, preview = preserve_workbook(filename, data, parsed)
+        output.close()
+        preview["notice"] = "Only selected literal cells change in a separate workbook copy. Formulas and all other workbook package parts, including VBA, are preserved. Row removal and edits to formula cells are blocked. Changed inputs can still change calculated results or macro behavior: review in Excel before relying on this copy. Original file remains unchanged."
+    else:
+        _, preview = clean_frames(filename, data, parsed)
+    return preview
+
+
+@app.post("/api/clean/export")
+async def clean_export(file: UploadFile = File(...), options: str = Form("{}"),
+                       fingerprint: str = Form(...), confirmed: bool = Form(False)):
+    filename, data = await _get_upload(file)
+    excel = filename.lower().endswith((".xlsx", ".xlsm"))
+    if excel:
+        output, preview = preserve_workbook(filename, data, clean_options(options))
+    else:
+        frames, preview = clean_frames(filename, data, clean_options(options))
+    if not confirmed or fingerprint != preview["fingerprint"]:
+        if excel:
+            output.close()
+        raise HTTPException(409, "Review a fresh preview and confirm it before downloading.")
+    if not excel:
+        output = cleaned_workbook(frames)
+    extension = ".xlsm" if filename.lower().endswith(".xlsm") else ".xlsx"
+    return StreamingResponse(stream_file_chunks(output),
+        media_type=("application/vnd.ms-excel.sheet.macroEnabled.12" if extension == ".xlsm" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        headers={"Content-Disposition": f'attachment; filename="cleaned_review_copy{extension}"'})
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "product": "Data Quality Detective", "stage": "free"}
@@ -131,6 +245,7 @@ def config():
         "upload_allowed": not public,
         "max_upload_bytes": HOSTED_MAX_FILE_BYTES if os.getenv("VERCEL") else MAX_FILE_BYTES,
         "macro_execution_via_web": False,
+        "large_upload_bytes": 0 if os.getenv('VERCEL') or public else 1024 ** 3,
         "public_demo": public,
     }
 

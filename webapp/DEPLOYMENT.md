@@ -20,7 +20,8 @@ The site is **free**, with no sign-in. `GET /api/config` returns `mode: free_web
 ### Host limits and safety caveats
 
 - Hosted request total: **4 MiB file + 64 KiB multipart overhead**, checked against `Content-Length` before multipart parsing; missing/invalid length is rejected. Individual file size is also checked after parsing. Vercel may enforce a stricter platform request-size limit.
-- Local file limit remains 10 MiB. The shared parser additionally caps 100,000 data rows across worksheets, 200 columns per sheet, 40 sheets, 2,000 ZIP members, and 250 MiB decompressed ZIP metadata size. These bounds mitigate but do not eliminate malicious-content and resource exhaustion risks.
+- Detailed analysis accepts up to 10 MiB locally and 4 MiB on Vercel. Its parser caps 100,000 data rows across worksheets, 200 columns per sheet, 40 sheets, 1,000,000 rectangular cells, 2,000 ZIP members, and 250 MiB total expanded ZIP content. CSV and workbook dimensions are checked before table allocation.
+- A separate localhost-only workflow accepts files up to 1 GiB for streaming inspection and reviewed cleaning. It is unavailable on Vercel. See `LOCAL_HOSTING.md` for supported operations, preservation safeguards and temporary-file handling. Do not expose this adapter publicly.
 - The web service NEVER executes VBA, macros, Excel formula recalculation or external workbook connections. XLSM macros are treated as nonexecuted content.
 - There are no user accounts, background job queues, hosting-level quotas, or tenant-based records. A free public endpoint can be abused and hosting can suspend/limit it. This is **not a verified safe environment for personal/regulated/confidential data**. For private files, recommend the local mode.
 
@@ -29,6 +30,10 @@ The site is **free**, with no sign-in. `GET /api/config` returns `mode: free_web
 The GitHub `production-safety-smoke.yml` checks real live HTTP behavior: `/api/config` reports free uploads, uploaded 3-row CSV is analyzed, paged rows and HTML/XLSX reports work, oversized and unsupported files are rejected, and all old SaaS routes return 404. It must pass on the public alias after promotion.
 
 Keep the repository open source and avoid enabling unknown third-party analytics or upload storage without documenting them.
+
+## Pending release approval
+
+The owner selected Vercel for smaller public uploads and local hosting for 1 GiB files. The live website must remain unchanged until the draft privacy page has a real operator name and working support/privacy email, and the owner has reviewed the prepared version. No public large-file server is planned for this release.
 
 ## Local Windows application
 

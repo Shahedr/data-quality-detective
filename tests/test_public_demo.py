@@ -91,10 +91,13 @@ def test_deployed_ui_includes_mode_detection_and_demo_mode_paging(monkeypatch):
     client = TestClient(app)
     homepage = client.get("/")
     script = client.get("/spreadsheet.js")
+    main_script = client.get("/app.js")
     assert homepage.status_code == 200
-    assert "initializeMode();" in homepage.text
-    assert "/api/demo/analyze" in homepage.text
-    assert "/api/demo/export/xlsx" in homepage.text
+    assert main_script.status_code == 200
+    assert '<script src="/app.js"></script>' in homepage.text
+    assert "initializeMode();" in main_script.text
+    assert "/api/demo/analyze" in main_script.text
+    assert "/api/demo/export/xlsx" in main_script.text
     assert "/api/demo/rows" in script.text
     assert "state.demo" in script.text
 
@@ -125,7 +128,7 @@ def test_retired_paid_routes_return_not_found(monkeypatch):
     monkeypatch.delenv("DQD_PUBLIC_DEMO_ONLY", raising=False)
     monkeypatch.setenv("VERCEL", "1")
     client = TestClient(app)
-    for route in ("/app", "/product", "/privacy", "/terms",
+    for route in ("/app", "/product",
                   "/api/saas/config", "/api/saas/billing/checkout",
                   "/api/saas/analyze", "/api/saas/admin/config"):
         assert client.get(route).status_code == 404, route
