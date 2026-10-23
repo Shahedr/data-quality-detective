@@ -55,15 +55,23 @@
     return NUMBER_WIDTH + state.columns.length * CELL_WIDTH;
   }
 
+  function cellAddress(column, row) {
+    let letters = "";
+    for (let n = column + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+      letters = String.fromCharCode(65 + (n - 1) % 26) + letters;
+    }
+    return letters + row;
+  }
+
   function createHeader() {
     const fragment = document.createDocumentFragment();
-    const rowNumber = element("div", "Data row", "sheet-header-cell sheet-number");
+    const rowNumber = element("div", "Sheet row", "sheet-header-cell sheet-number");
     rowNumber.setAttribute("role", "columnheader");
     fragment.append(rowNumber);
     state.columns.forEach((colName, index) => {
-      const col = element("div", colName, "sheet-header-cell");
+      const col = element("div", cellAddress(index, 1) + " · " + colName, "sheet-header-cell");
       col.setAttribute("role", "columnheader");
-      col.title = colName;
+      col.title = cellAddress(index, 1) + " · " + colName;
       if (state.columnProfiles[index] && state.columnProfiles[index].constant) {
         col.append(element("small", "Constant column", "constant-head"));
       }
@@ -106,6 +114,12 @@
       if (flags && flags.length) {
         cell.classList.add("cell-" + flags[0]);
         cell.title = flags.map(f => state.labels[f] || f).join("; ");
+      }
+      if (row) {
+        const address = cellAddress(c, row.row_number + 1);
+        cell.title = address + (cell.title ? " · " + cell.title : "");
+        cell.setAttribute("aria-label", address + ": " + text);
+        cell.append(element("small", address, "cell-address"));
       }
       const displayed = element("span", text, "sheet-value");
       if (value === null && row) displayed.classList.add("data-missing");
