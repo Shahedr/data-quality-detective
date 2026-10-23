@@ -44,3 +44,11 @@ def test_internal_files_and_interactive_docs_are_not_served(path):
 
 def test_trace_is_not_supported():
     assert TestClient(app).request('TRACE', '/').status_code == 405
+
+
+def test_deployment_identity_allows_smoke_checks_to_wait_for_expected_release(monkeypatch):
+    monkeypatch.setenv('VERCEL', '1')
+    monkeypatch.setenv('VERCEL_GIT_COMMIT_SHA', 'a' * 40)
+    assert TestClient(app).get('/api/config').json()['release_sha'] == 'a' * 40
+    monkeypatch.delenv('VERCEL_GIT_COMMIT_SHA')
+    assert TestClient(app).get('/api/config').json()['release_sha'] == ''

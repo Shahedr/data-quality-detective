@@ -247,6 +247,7 @@ def config():
         "macro_execution_via_web": False,
         "large_upload_bytes": 0 if os.getenv('VERCEL') or public else 1024 ** 3,
         "public_demo": public,
+        "release_sha": os.getenv("VERCEL_GIT_COMMIT_SHA", ""),
     }
 
 

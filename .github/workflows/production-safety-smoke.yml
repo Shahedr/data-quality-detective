@@ -36,14 +36,16 @@ jobs:
                     "Content-Type: application/octet-stream\r\n\r\n").encode()+body+(
                     f"\r\n--{boundary}--\r\n").encode()
               return data,{"Content-Type":"multipart/form-data; boundary="+boundary}
-          for _ in range(18):
+          expected_sha=os.environ.get("GITHUB_SHA", "")
+          for _ in range(48):
               code,typ,body=call("/api/config")
               if code==200 and "application/json" in typ:
                   cfg=json.loads(body)
-                  if cfg.get("mode")=="free_web" and cfg.get("upload_allowed") is True:
+                  if (cfg.get("mode")=="free_web" and cfg.get("upload_allowed") is True
+                      and (not expected_sha or cfg.get("release_sha")==expected_sha)):
                       break
               time.sleep(5)
-          else:raise SystemExit("Expected a real free upload-enabled FastAPI deployment")
+          else:raise SystemExit("Expected release is not serving on the public alias: "+expected_sha)
           assert cfg["max_upload_bytes"]==4*1024*1024
           code,typ,page=call("/")
           assert code==200 and b"Choose file" in page and b"Free" in page
