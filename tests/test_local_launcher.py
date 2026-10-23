@@ -25,6 +25,18 @@ def test_launcher_rejects_non_tcp_port_ranges():
         available_port(65536, 65537)
 
 
+def test_high_custom_port_uses_a_valid_fallback_range():
+    assert 18875 <= available_port(18875) <= 18974
+
+
+def test_invalid_port_has_a_friendly_error_without_traceback(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(['--port', '0', '--no-browser'])
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert 'Could not start the local app' in error and 'Traceback' not in error
+
+
 def test_startup_help_does_not_launch_browser_or_server():
     with pytest.raises(SystemExit) as exc:
         main(["--help"])

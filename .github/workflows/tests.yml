@@ -47,6 +47,52 @@ jobs:
           dqdetect examples/messy_orders.csv --format md --output /tmp/dqdetect-reports
           test -f /tmp/dqdetect-reports/messy_orders_report.md
 
+  macos-local-smoke:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Follow documented Mac installation
+        run: |
+          python3 -m venv .venv
+          ./.venv/bin/python -m pip install -e ".[web]"
+          ./.venv/bin/python -m pip install pytest httpx
+      - name: Test CLI, local launcher, workbook safety and large-file flows
+        run: >-
+          ./.venv/bin/python -m pytest -q
+          tests/test_cli.py tests/test_local_launcher.py tests/test_workspace.py
+          tests/test_largefiles.py tests/test_large_cleaning.py
+          tests/test_large_workbook_security.py tests/test_asvs_security.py
+      - name: Check local launcher entrypoint
+        run: ./.venv/bin/python -m webapp.launch_local --help
+      - name: Start the real loopback server on macOS
+        run: |
+          ./.venv/bin/python - <<'PY'
+          import json, subprocess, sys, time
+          from urllib.request import urlopen
+          server = subprocess.Popen([sys.executable, '-m', 'webapp.launch_local', '--port', '18765', '--no-browser'])
+          try:
+              for attempt in range(100):
+                  try:
+                      with urlopen('http://127.0.0.1:18765/api/config', timeout=2) as response:
+                          config = json.loads(response.read())
+                      break
+                  except OSError:
+                      if server.poll() is not None:
+                          raise RuntimeError('Local server exited during startup')
+                      time.sleep(0.1)
+              else:
+                  raise RuntimeError('Local server did not start')
+              assert config['mode'] == 'local' and config['large_upload_bytes'] == 1024**3, config
+              print('macOS real HTTP startup and 1 GiB local configuration passed')
+          finally:
+              server.terminate()
+              server.wait(timeout=15)
+          PY
+
   windows-native-smoke:
     runs-on: windows-latest
 
@@ -130,7 +176,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: [test, windows-native-smoke, postgres-integration, action-smoke]
+    needs: [test, macos-local-smoke, windows-native-smoke, postgres-integration, action-smoke]
 
     steps:
       - name: Check out repository

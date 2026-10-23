@@ -13,8 +13,10 @@ import webbrowser
 LOCAL_HOST = "127.0.0.1"
 
 
-def available_port(preferred=8000, last=8099):
+def available_port(preferred=8000, last=None):
     """Pick a free local TCP port; binding remains limited to loopback."""
+    if last is None:
+        last = min(preferred + 99, 65535)
     if not (1 <= preferred <= last <= 65535):
         raise ValueError("Invalid loopback port range.")
     for port in range(preferred, last + 1):
@@ -62,7 +64,10 @@ def main(argv=None):
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args(argv)
-    return launch(args.port, open_browser=not args.no_browser)
+    try:
+        return launch(args.port, open_browser=not args.no_browser)
+    except (ValueError, RuntimeError, OSError) as exc:
+        parser.exit(2, f"Could not start the local app: {exc}\n")
 
 
 if __name__ == "__main__":
