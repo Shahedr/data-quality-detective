@@ -112,6 +112,17 @@ window.DQDWorkspace = (() => {
       const data = await response.json(); if(mine !== version || opts !== JSON.stringify(options())) return;
       preview = {data, options:opts};
       const box = byId("cleanPreview");
+      if(data.copy_preview) {
+        box.append(el('h4','Preview of the cleaned copy'));
+        box.append(el('p','First 20 data rows and 20 columns of the selected worksheet; cell text is capped at 500 characters. Formula results use saved values and are not recalculated. Formatting and macros are not shown.'));
+        const sample=el('table'), sampleHead=el('tr');
+        sampleHead.append(el('th','Output row'));
+        for(const name of data.copy_preview.columns)sampleHead.append(el('th',name));
+        const sampleHeader=el('thead');sampleHeader.append(sampleHead);sample.append(sampleHeader);
+        const sampleBody=el('tbody');
+        data.copy_preview.rows.forEach((values,index)=>{const row=el('tr');row.append(el('td',index+2));for(const value of values)row.append(el('td',value===null?'(blank)':value));sampleBody.append(row);});
+        sample.append(sampleBody);const scroll=el('div');scroll.style.overflowX='auto';scroll.append(sample);box.append(scroll);
+      }
       box.append(el("p", `${data.rows_before} → ${data.rows_after} rows · ${data.cells_changed} changed cells · ${data.duplicates_removed} duplicates removed · ${data.invalid_dates_unchanged} invalid dates unchanged.`));
       box.append(el("p", data.notice));
       if (data.preview_truncated) box.append(el("p", "Preview shows at most 100 changes and 100 removed row locations; totals include all changes."));
@@ -174,7 +185,7 @@ window.DQDWorkspace = (() => {
     clean.append(check("cleanTrim","Trim surrounding spaces"),label("Text case",select("cleanCase",[["keep","Keep case"],["lower","lowercase"],["upper","UPPERCASE"]])),label("Date input format",select("cleanDate",[["","Do not change dates"],["%Y-%m-%d","YYYY-MM-DD"],["%m/%d/%Y","MM/DD/YYYY → ISO"],["%d/%m/%Y","DD/MM/YYYY → ISO"]])),check("cleanDuplicates","Remove full-row duplicates"));
     if(excel) {byId("cleanDuplicates").disabled = true;byId("cleanDuplicates").parentElement.title = "Row removal can break formulas and VBA and is disabled for Excel.";}
     for(const input of clean.querySelectorAll("input,select")) input.addEventListener("change",invalidate);
-    const p=button("Preview cleaning",previewClean);p.id="previewClean";clean.append(p);
+    const p=button("Preview cleaned copy",previewClean);p.id="previewClean";clean.append(p);
     const box=el("div",undefined,"workspace-preview");box.id="cleanPreview";box.setAttribute("aria-live","polite");clean.append(box);
     clean.append(check("confirmClean","I reviewed these changes and will verify the separate copy before using it"));
     byId("confirmClean").addEventListener("change",()=>byId("downloadClean").disabled=!preview||!byId("confirmClean").checked);

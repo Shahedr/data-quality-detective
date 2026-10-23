@@ -110,7 +110,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 .grid-footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:13px}
 .grid-footer .muted{margin:0}
 .grid-footer .error{color:#bb3434}
-.cell-address{font-size:10px;font-weight:700;margin-right:6px;opacity:.85}
+.column-name-button{font:inherit;color:inherit;background:transparent;border:0;padding:0;text-align:left;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.column-name-button:hover{text-decoration:underline}.cell-address{font-size:10px;font-weight:700;margin-right:6px;opacity:.85}
 </style>
 </head>
 <body>
@@ -183,7 +183,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="grid-head">
         <div>
           <h3>Explore the entire spreadsheet</h3>
-          <div class="muted">Scroll through all rows and columns. Flagged cells are highlighted in place.</div>
+          <div class="muted">Scroll through all rows and columns. Flagged cells are highlighted in place. Click a column heading to give it a display name; names last for this file in this page only and do not change exports.</div>
         </div>
         <div class="grid-controls">
           <label for="gridFilter">Show rows</label>
@@ -228,6 +228,47 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
       <div class="table-scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th><th>Outliers</th><th>Detected issues</th></tr></thead><tbody id="columns"></tbody></table></div>
     </div>
   </section>
+<section id="localSetup" class="panel" style="padding:24px;margin-top:24px">
+  <h2>Run locally &mdash; keep your files on your computer</h2>
+  <h3>Process up to 1 GB locally</h3>
+  <p><strong>More control over your data privacy.</strong> In local mode, spreadsheet uploads go only to the server running on your own computer. This app does not send those local uploads to Vercel, an AI provider or an analytics service. Temporary processing files and downloaded reports can remain on your device; local processing is not a malware scan or secure-erasure guarantee.</p>
+  <p>For files larger than the 4 MB website limit, run this free app on your Windows PC or Mac. Local large-file mode accepts up to 1 GiB (1,073,741,824 bytes). Files are processed on your computer; no Vercel account, payment or Microsoft Excel installation is needed.</p>
+  <p><a class="secondary" href="http://127.0.0.1:8000/#largeFiles">Open my local app</a> &mdash; start it using the steps below first. If port 8000 is busy, use the address printed in your terminal.</p>
+  <h3>Before you start</h3>
+  <ol>
+    <li>Install <a href="https://www.python.org/downloads/">Python 3.12 or 3.13 from python.org</a>. On Windows, enable the installer option to add Python to PATH if offered. Reopen your terminal after installation.</li>
+    <li><a href="https://github.com/Shahedr/data-quality-detective/archive/refs/heads/main.zip">Download the app ZIP</a>, extract it, and open the extracted folder containing <code>pyproject.toml</code>. Internet is needed for installation; local file processing does not need a hosting service.</li>
+    <li>Keep at least 5 GiB of temporary disk space free for cleaning a 1 GiB file. Only one large job runs at a time. Very complex, encrypted or unsupported files may be rejected below the size limit.</li>
+  </ol>
+  <details><summary><strong>Windows &mdash; PowerShell setup</strong></summary>
+    <p>Open the extracted folder in File Explorer, right-click inside it and choose Open in Terminal. Select PowerShell. Run each line:</p>
+    <pre style="overflow:auto"><code>python --version
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[web]"
+.\.venv\Scripts\python.exe -m webapp.launch_local</code></pre>
+    <p>If <code>python</code> is not found, try <code>py -3.12</code> for the first two commands after installing Python 3.12. No environment activation or PowerShell execution-policy changes are needed. Next time, run only the last command from this folder, or double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code>.</p>
+  </details>
+  <details><summary><strong>Mac &mdash; Terminal setup</strong></summary>
+    <p>Open Terminal, type <code>cd </code> (with a space), drag the extracted app folder into the terminal, and press Return. Run each line:</p>
+    <pre style="overflow:auto"><code>python3 --version
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e ".[web]"
+./.venv/bin/python -m webapp.launch_local</code></pre>
+    <p>Use Python 3.12 or 3.13 from python.org, not the system Python. If needed, use <code>python3.12</code> instead of <code>python3</code> for the first two commands. Next time, open this same folder in Terminal and run only the last command. The app supports Intel and Apple Silicon Macs through compatible Python packages; native Mac installation has not yet been tested on Mac hardware.</p>
+  </details>
+  <h3>Check that local mode is working</h3>
+  <ol>
+    <li>The command opens a browser at <code>http://127.0.0.1:8000</code> (or another available port). Check that the badge says <strong>FREE LOCAL WORKSPACE</strong>, rather than FREE WEB TOOL.</li>
+    <li>At the bottom, expand <strong>Large files &middot; up to 1 GiB &middot; on this computer</strong>. Choose a CSV, XLSX or XLSM file and select <strong>Inspect large file</strong>. Start with a small test file to confirm setup.</li>
+    <li>Choose a worksheet for Excel, download the overview, or expand <strong>Prepare a cleaned large-file copy</strong>. Preview changes, confirm and download a separate copy. Your original stays unchanged. Large mode provides inspection and cleaning; the detailed grid, charts and templates use the smaller-file workspace.</li>
+    <li>Keep the terminal open while using the app. Use Cancel to stop or discard a large job. Press <kbd>Ctrl+C</kbd> in the terminal to stop the server when finished.</li>
+  </ol>
+  <details><summary>Troubleshooting and privacy</summary>
+    <p>If the browser does not open, use the address printed in the terminal. If dependencies fail to install, check your connection and Python version; do not use administrator or sudo installation. If the file is rejected, read the message: the 1 GiB limit does not override format, memory-safety or temporary disk limits. Avoid running from a cloud-synced folder for private work. Do not expose the local server through a tunnel or public network address.</p>
+    <p>Formula cells and VBA are preserved, never executed by the upload service. Changed inputs can affect calculated results or macro behavior. Do not enable macros from untrusted files. Downloaded reports remain on your device.</p>
+    <p>Windows setup and loopback checks are tested here. Mac commands follow Python's documented virtual-environment layout; a real Mac check remains outstanding. <a href="https://docs.python.org/3/library/venv.html">Python environment documentation</a> &middot; <a href="https://github.com/Shahedr/data-quality-detective/blob/main/LOCAL_HOSTING.md">Detailed local limits</a></p>
+  </details>
+</section>
 </main>
 <footer><div class="shell">Data Quality Detective · Free open-source software · Results are diagnostic, not automatic corrections. · <a href="https://github.com/Shahedr/data-quality-detective" target="_blank" rel="noopener noreferrer">Source & local install</a></div></footer>
 <script src="/spreadsheet.js"></script>

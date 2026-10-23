@@ -27,6 +27,9 @@ def test_clean_preview_confirm_and_literal_export_preserves_original():
     assert preview.status_code == 200, preview.text
     info = preview.json()
     assert info["duplicates_removed"] == 1
+    assert info['copy_preview']['columns'][:2] == ['id', 'name']
+    assert info['copy_preview']['rows'][0][:2] == ['001', 'alice']
+    assert len(info['copy_preview']['rows']) == 4
     assert info["rows_before"] == 5 and info["rows_after"] == 4
     assert info["changes"][0] == {"row": 2, "column": "name", "before": " Alice ", "after": "alice"}
     exported = post("/api/clean/export", options=options, fingerprint=info["fingerprint"], confirmed="true")

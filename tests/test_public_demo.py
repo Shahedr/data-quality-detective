@@ -8,6 +8,18 @@ from openpyxl import load_workbook
 from webapp.app import app
 
 
+def test_hosted_site_keeps_local_large_file_setup_visible(monkeypatch):
+    monkeypatch.setenv('VERCEL', '1')
+    page = TestClient(app).get('/').text
+    assert 'id="localSetup"' in page
+    assert 'Process up to 1 GB locally' in page
+    assert 'Windows &mdash; PowerShell setup' in page
+    assert 'Mac &mdash; Terminal setup' in page
+    assert 'http://127.0.0.1:8000/#largeFiles' in page
+    assert 'Scripts\\python.exe -m webapp.launch_local' in page
+    assert './.venv/bin/python -m webapp.launch_local' in page
+
+
 def test_local_app_behaviour_and_public_demo_routes_are_separate(monkeypatch):
     monkeypatch.delenv("DQD_PUBLIC_DEMO_ONLY", raising=False)
     client = TestClient(app)

@@ -1,5 +1,51 @@
 # Local hosting
 
+## First-time setup on Windows or Mac
+
+Install Python 3.12 or 3.13 from https://www.python.org/downloads/. Download
+the repository ZIP from GitHub, extract it and open a terminal in the folder
+containing pyproject.toml. Installation needs internet access. Use a non-synced
+folder for private work. The public website's bottom "Process up to 1 GB locally"
+section contains the same steps and troubleshooting guidance.
+
+Windows PowerShell (enable Python's PATH option during installation if offered):
+
+```powershell
+python --version
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[web]"
+.\.venv\Scripts\python.exe -m webapp.launch_local
+```
+
+If python is not found, use py -3.12 for the first two commands with Python 3.12
+installed. Subsequent launches need only the last command or the existing Windows
+START_DATA_QUALITY_DETECTIVE.cmd launcher.
+
+Mac Terminal (cd to the extracted folder first):
+
+```sh
+python3 --version
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e ".[web]"
+./.venv/bin/python -m webapp.launch_local
+```
+
+Use python3.12 for the first two commands if python3 selects a different Python
+version. Subsequent launches need only the last command from the same folder.
+Activation, administrator/sudo installation and execution-policy changes are not
+needed. These commands use Python's standard Windows/POSIX venv layouts; native
+Mac installation has not been verified on Mac hardware.
+
+The browser should open at http://127.0.0.1:8000, or another available port shown
+in the terminal. Verify the FREE LOCAL WORKSPACE badge, then expand Large files
+at the bottom and inspect a small test file before trying a large one. The
+website's Open my local app link assumes port 8000; use the printed address if
+the launcher chose another port. Keep the terminal open; Ctrl+C stops the app.
+Reserve at least 5 GiB of temporary disk space when cleaning a 1 GiB file.
+Microsoft Excel is not required for this local web workflow, on either OS.
+
+## Existing local installation
+
 Double-click `START_DATA_QUALITY_DETECTIVE.cmd` from this clone. It uses this
 clone's virtual environment when installed, selects an available loopback port
 and opens the app. Keep the server running while inspecting files. This does

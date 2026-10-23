@@ -88,6 +88,12 @@ def clean_frames(name, data, options):
         "duplicates_removed": removed, "removed_source_rows": (duplicates[duplicates].index + 2).tolist()[:100],
         "invalid_dates_unchanged": invalid_dates, "changes": changes,
         "preview_truncated": changed_count > 100 or removed > 100,
+        "copy_preview": {
+            "columns": labels[:20],
+            "rows": [[None if pd.isna(value) else str(value)[:500] for value in row]
+                     for row in frames[selected].iloc[:20, :20].itertuples(index=False, name=None)],
+            "total_rows": len(frames[selected]), "total_columns": len(labels),
+        },
         "notice": "Download is a separate values-only XLSX copy of every worksheet. Hidden sheets become visible. Formulas, macros, formatting, links and controls are not preserved. Invalid dates stay unchanged. Duplicate removal keeps the first full-row match after transformations, on the selected sheet only.",
     }
 
