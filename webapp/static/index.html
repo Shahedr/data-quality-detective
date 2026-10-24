@@ -233,18 +233,25 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
   <h3>Process up to 1 GB locally</h3>
   <p>Analyze larger files on your Windows PC or Mac without uploading them to this website. The local app is free and does not require an account or Microsoft Excel.</p>
   <p>Local analysis runs on your computer. Temporary processing files and downloaded reports are stored on your device. <a href="/privacy">Read the privacy notice</a>.</p>
-  <p><a class="secondary" href="http://127.0.0.1:8000/#largeFiles">Open the local app</a> <span class="muted">Already installed? Start the app on your computer, then use this link.</span></p>
+  <p><a class="secondary" href="#localInstall">Set up the local app</a> <span class="muted">Start it from the downloaded app folder. Your browser opens automatically when it is ready.</span></p>
   <h3>1. Prepare your computer</h3>
   <ol>
     <li>Install <a href="https://www.python.org/downloads/">Python 3.12 or 3.13</a>. On Windows, select <strong>Add Python to PATH</strong> if the installer offers it.</li>
     <li><a href="https://github.com/Shahedr/data-quality-detective/archive/refs/heads/main.zip">Download the app</a> and extract the ZIP file. Open the extracted folder containing <code>pyproject.toml</code>.</li>
     <li>Have an internet connection for installation and at least 5 GB of free disk space for large-file cleaning.</li>
   </ol>
-  <h3>2. Install and start the app</h3>
-  <p>Choose your operating system. Enter each command on a separate line and wait for it to finish.</p>
-  <details><summary><strong>Windows &mdash; PowerShell setup</strong></summary>
+  <h3 id="localInstall">2. Install and start the app</h3>
+  <p>Choose your operating system below. On Windows, use the setup files for the simplest installation.</p>
+  <details><summary><strong>Windows &mdash; setup</strong></summary>
     <ol>
-      <li>In the extracted app folder, right-click an empty area and select <strong>Open in Terminal</strong>. Use a PowerShell tab.</li>
+      <li>Open the extracted app folder in File Explorer. You should see <code>INSTALL_ON_WINDOWS.cmd</code> and <code>START_DATA_QUALITY_DETECTIVE.cmd</code>.</li>
+      <li>Double-click <code>INSTALL_ON_WINDOWS.cmd</code>. Wait until it says <strong>Setup complete</strong>.</li>
+      <li>Double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code>. Keep its window open. The app opens in your browser when it is ready.</li>
+    </ol>
+    <p><strong>Important:</strong> these files must stay inside the extracted app folder. Do not move them to your desktop on their own.</p>
+    <details><summary>Alternative: Windows PowerShell setup</summary>
+    <ol>
+      <li>Do not run these commands from your home folder (<code>C:\Users\your-name</code>). In the extracted app folder, right-click an empty area and select <strong>Open in Terminal</strong>. Use a PowerShell tab.</li>
       <li>Check that Python reports version 3.12 or 3.13, then install the app:</li>
     </ol>
     <pre style="overflow:auto"><code>python --version
@@ -253,6 +260,7 @@ python -m venv .venv
     <p>Start the app:</p>
     <pre style="overflow:auto"><code>.\.venv\Scripts\python.exe -m webapp.launch_local</code></pre>
     <p>For future use, double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code> in this folder, or run the start command again. You only need to install once.</p>
+    </details>
   </details>
   <details><summary><strong>Mac &mdash; Terminal setup</strong></summary>
     <ol>
