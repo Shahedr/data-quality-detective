@@ -1,4 +1,7 @@
-from desktop_launcher import LocalApp
+from pathlib import Path
+from runpy import run_path
+
+LocalApp = run_path(str(Path(__file__).resolve().parents[1] / 'desktop_launcher.py'))['LocalApp']
 
 
 def test_desktop_stays_local_even_with_hosted_environment(monkeypatch):
