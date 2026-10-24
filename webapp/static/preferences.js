@@ -25,7 +25,7 @@
   for(const id of ['downloadJson','downloadHtml','downloadXlsx'])reports.append(document.getElementById(id));
   const large=document.createElement('details');large.className='panel';large.style.padding='18px';
   large.id='largeFiles';
-  const title=document.createElement('summary');title.textContent='Large files · up to 1 GiB · on this computer';large.append(title);
+  const title=document.createElement('summary');title.textContent='Large files · up to 1 GB · on this computer';large.append(title);
   const help=document.createElement('p');help.textContent='Inspect and clean CSV, XLSX and XLSM files on this computer. Start with a complete-file overview, then preview selected changes and download a separate copy. CSV supports duplicate removal; Excel preserves formulas and VBA and skips formula edits. Charts, templates and the interactive grid remain in the smaller-file workspace.';large.append(help);
   const input=document.createElement('input');input.type='file';input.accept='.csv,.xlsx,.xlsm';input.setAttribute('aria-label','Choose large file');large.append(input);
   const start=document.createElement('button');start.textContent='Inspect large file';start.className='secondary';large.append(start);
@@ -77,7 +77,7 @@
   async function inspectLarge(file, clean=null){
     if(start.disabled)return;
     if(!file){status.textContent='Choose a CSV, XLSX or XLSM first.';return;}
-    if(file.size>1024**3){status.textContent='The test adapter accepts up to 1 GiB per file.';return;}
+    if(file.size>1024**3){status.textContent='This file exceeds the local limit of 1,073,741,824 bytes (about 1 GB).';return;}
     if(!/\.(csv|xlsx|xlsm)$/i.test(file.name)){status.textContent='Choose a CSV, XLSX or XLSM file.';return;}
     large.open=true;large.scrollIntoView({behavior:'smooth',block:'start'});
     selectedFile=file;

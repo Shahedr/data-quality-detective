@@ -2,7 +2,7 @@ name: Portable desktop downloads
 on:
   push:
     branches: [main]
-    paths: [desktop_launcher.py, build_desktop.py, .github/workflows/desktop-build.yml]
+    paths: [desktop_launcher.py, build_desktop.py, webapp/**, dqdetect/**, pyproject.toml, licenses/**, .github/workflows/desktop-build.yml]
   workflow_dispatch:
 permissions:
   contents: read

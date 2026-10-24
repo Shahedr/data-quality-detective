@@ -125,10 +125,10 @@ async function initializeMode(){
       $("modeTag").textContent=hosted?"FREE WEB TOOL":"FREE LOCAL WORKSPACE";
       document.querySelector("#drop .muted").textContent=hosted
         ?"CSV, XLSX or XLSM · max 4 MB per file · 100,000 data rows · 40 sheets"
-        :"CSV, XLSX or XLSM · max 10 MB per file · 100,000 data rows · 40 sheets";
+        :"CSV, XLSX or XLSM · up to 1 GB locally · detailed reports up to 10 MB";
       $("dataNotice").textContent=hosted
         ?"Free, with no account required. Online analysis uploads your file for processing. For confidential or sensitive files, use the local app on your own computer. See the privacy notice for storage and retention details."
-        :"Free local tool: your files are processed by the server on this computer. No sign-in or payments.";
+        :"Your files stay on this computer. Choose or drop a file up to 1 GB here. Files over 10 MB automatically open the large-file overview and cleaning tools; smaller files get the detailed report, charts and grid.";
       return;
     }
     document.getElementById("modeTag").textContent="PUBLIC SAMPLE DEMO";
@@ -171,10 +171,10 @@ async function analyzeFile(file,sheet=""){
   const maxBytes=document.getElementById("modeTag").textContent==="FREE WEB TOOL"?4*1024*1024:10*1024*1024;
   if(file.size>maxBytes){
     if(maxBytes===10*1024*1024&&window.DQDLargeFiles){
-      setStatus("Opening large-file inspection. Detailed cleaning and templates use the smaller-file workspace.");
+      setStatus("Opening large-file inspection. Charts, templates and the detailed grid are available for files up to 10 MB.");
       return window.DQDLargeFiles.inspect(file);
     }
-    setStatus("Public upload limit: 4 MB. Use the local app for files up to 1 GiB.",true);return;
+    setStatus("Public upload limit: 4 MB. Use the local app for files up to 1 GB.",true);return;
   }
   running=true;$("choose").disabled=true;$("sample").disabled=true;
   setStatus("Analyzing "+file.name+" …");

@@ -165,10 +165,12 @@ Install the database extra:
 pip install "dqdetect[database]"
 ~~~
 
+**The values below are placeholders, not real credentials.** Replace them only in your local environment. Never commit real passwords or connection URLs to GitHub. Database support is optional and is not needed for spreadsheet files.
+
 For PostgreSQL, prefer putting the connection URL in an environment variable instead of typing credentials directly into shell history:
 
 ~~~bash
-export DQDETECT_DATABASE_URL="postgresql+psycopg://user:password@host:5432/database"
+export DQDETECT_DATABASE_URL="postgresql+psycopg://YOUR_USER:YOUR_PASSWORD@YOUR_HOST:5432/YOUR_DATABASE"
 dqdetect --table orders --db-schema public --format html
 ~~~
 
