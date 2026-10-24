@@ -6,3 +6,6 @@ dist/
 build/
 *.egg-info/
 reports/
+desktop-dist/
+*.spec
+desktop-self-test.log
