@@ -2,7 +2,7 @@
 
 ## Download and open — no Python setup
 
-Download a tested community preview from the [official download page](https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-9).
+Download a tested community preview from the [official download page](https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-12).
 Choose Windows, Mac with Apple Silicon, or Mac with Intel. Follow the illustrated-by-label
 steps on the [website’s local setup section](https://data-quality-detective-demo.vercel.app/#localSetup),
 or the [complete download instructions](DESKTOP_DOWNLOADS.md).

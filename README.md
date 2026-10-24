@@ -26,7 +26,7 @@ The online service is a free, best-effort demo-quality utility—not an enterpri
 
 ## Run locally — no upload to someone else's server
 
-**Download and open:** [Get the local app for Windows or Mac](https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-9).
+**Download and open:** [Get the local app for Windows or Mac](https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-12).
 Python is included. Follow the [download guide](DESKTOP_DOWNLOADS.md) for extraction,
 startup and publisher-warning instructions. The local large-file tools accept up to 1 GB.
 The source installation below is an advanced alternative.
