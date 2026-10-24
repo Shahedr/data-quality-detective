@@ -49,13 +49,17 @@ def test_excel_grid_worksheets_formulas_shared_strings_and_cleaned_preview():
             content = source.read(entry.filename)
             if entry.filename == 'xl/worksheets/sheet1.xml':
                 content = content.replace(b'<c r="A2" t="inlineStr"><is><t xml:space="preserve"> Alice </t></is></c>', b'<c r="A2" t="s"><v>0</v></c>')
+                content = content.replace(b'<c r="A65" t="inlineStr"><is><t xml:space="preserve"> Alice </t></is></c>', b'<c r="A65" t="s"><v>1</v></c>')
             target.writestr(entry, content)
-        target.writestr('xl/sharedStrings.xml', '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t> Alice </t></si></sst>')
+        target.writestr('xl/sharedStrings.xml', '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t> Alice </t></si><si><t> Outside preview </t></si></sst>')
     client = TestClient(app)
     job, endpoint, token, state = upload(client, 'grid.xlsm', shared.getvalue(), {'sheet': 'Orders', 'columns': ['A'], 'trim': True})
     assert state['status'] == 'review', state
     page = client.get(endpoint+'/rows?sheet=Orders&offset=50', headers=token).json()
     assert page['rows'][0] == {'row_number': 51, 'values': [' Alice ', '=1+2']}
+    assert page['rows'][14]['values'][0] == ' Outside preview '
+    later_cleaned = client.get(endpoint+'/rows?sheet=Orders&offset=50&cleaned=true', headers=token).json()
+    assert later_cleaned['rows'][14]['values'][0] == 'Outside preview'
     original = client.get(endpoint+'/rows?sheet=Orders', headers=token).json()
     assert original['rows'][1]['values'][0] == ' Alice '
     cleaned = client.get(endpoint+'/rows?sheet=Orders&cleaned=true', headers=token).json()

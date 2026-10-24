@@ -65,7 +65,7 @@
     for(const [name,value] of Object.entries({token:reviewJob.token,fingerprint:overview.cleaning.fingerprint,confirmed:'true'})){const input=document.createElement('input');input.name=name;input.value=value;form.append(input);}
     document.body.append(form);form.submit();form.remove();exportButton.disabled=true;confirm.checked=false;status.textContent='Download requested. Check browser downloads. The temporary copy is deleted when the transfer finishes.';
   });
-  style.textContent += '.large-preview-scroll{overflow:auto;max-height:420px;border:1px solid #94a3b8;border-radius:8px;margin:12px 0}.large-preview-scroll table{border-collapse:collapse;width:max-content;min-width:100%}.large-preview-scroll caption{text-align:left;padding:12px;font-weight:700}.large-preview-scroll th,.large-preview-scroll td{border:1px solid #94a3b8;padding:8px;max-width:240px;min-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.large-preview-scroll th{position:sticky;top:0;background:#edf2fc}.large-preview-scroll .large-changed{background:#dcfce7;color:#14532d!important}html[data-theme=dark]{--missing-preview:#7f1d1d}html[data-theme=dark] .large-preview-scroll .large-changed{background:#14532d;color:#f0fdf4!important}';
+  style.textContent += '.large-preview-scroll{overflow:auto;max-height:420px;border:1px solid #94a3b8;border-radius:8px;margin:12px 0}.large-preview-scroll table{border-collapse:collapse;width:max-content;min-width:100%}.large-preview-scroll caption{text-align:left;padding:12px;font-weight:700}.large-preview-scroll th,.large-preview-scroll td{border:1px solid #94a3b8;padding:8px;max-width:240px;min-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.large-preview-scroll thead th{position:sticky;top:0;background:#edf2fc}.large-preview-scroll .large-changed{background:#dcfce7;color:#14532d!important}html[data-theme=dark]{--missing-preview:#7f1d1d}html[data-theme=dark] .large-preview-scroll .large-changed{background:#14532d;color:#f0fdf4!important}';
   function renderSheet(container, preview, title){
     container.replaceChildren();
     if(!preview)return;
@@ -77,7 +77,7 @@
     for(const row of preview.rows){
       const tr=document.createElement('tr'),number=document.createElement('th');number.scope='row';number.textContent=row.row_number;tr.append(number);
       preview.columns.forEach((column,index)=>{const cell=document.createElement('td'),value=row.values[index]??'';cell.textContent=value===''?'(blank)':value;if(value==='')cell.style.backgroundColor='var(--missing-preview,#fff1f2)';
-        cell.title=column+row.row_number;
+        cell.title=column+row.row_number+'\n'+value;
         tr.append(cell);
       });body.append(tr);
     }
