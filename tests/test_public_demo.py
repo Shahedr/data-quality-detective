@@ -13,12 +13,15 @@ def test_hosted_site_keeps_local_large_file_setup_visible(monkeypatch):
     page = TestClient(app).get('/').text
     assert 'id="localSetup"' in page
     assert 'Process up to 1 GB locally' in page
-    assert 'Windows &mdash; setup' in page
-    assert 'Mac &mdash; Terminal setup' in page
-    assert 'href="#localInstall"' in page
+    assert 'Windows &mdash; download and open' in page
+    assert 'Mac &mdash; download and open' in page
+    assert 'id="localInstall"' in page
     assert 'href="http://127.0.0.1:8000/#largeFiles"' not in page
-    assert 'Scripts\\python.exe -m webapp.launch_local' in page
-    assert './.venv/bin/python -m webapp.launch_local' in page
+    assert 'No Python installation or commands are needed' in page
+    for platform in ('windows-x64', 'mac-apple-silicon', 'mac-intel'):
+        assert f'data-quality-detective-{platform}.zip' in page
+    assert 'Extract All' in page and 'Applications' in page
+    assert 'If a warning identifies malware, stop' in page
 
 
 def test_local_app_behaviour_and_public_demo_routes_are_separate(monkeypatch):

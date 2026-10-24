@@ -1,12 +1,22 @@
 # Local hosting
 
-## First-time setup on Windows or Mac
+## Download and open — no Python setup
+
+Download a tested community preview from the [official download page](https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-1).
+Choose Windows, Mac with Apple Silicon, or Mac with Intel. Follow the illustrated-by-label
+steps on the [website’s local setup section](https://data-quality-detective-demo.vercel.app/#localSetup),
+or the [complete download instructions](DESKTOP_DOWNLOADS.md).
+The app opens a small launcher and your browser workspace. Keep the launcher open while
+working; finish or cancel processing before selecting Quit. Python is included.
+These community builds are not publisher-verified or notarized; read the warning guidance
+on the download page. Do not bypass a malware warning.
+
+## Advanced alternative: install from source
 
 Install Python 3.12 or 3.13 from https://www.python.org/downloads/. Download
 the repository ZIP from GitHub, extract it and open a terminal in the folder
 containing pyproject.toml. Installation needs internet access. Use a non-synced
-folder for private work. The public website's bottom "Process up to 1 GB locally"
-section contains the same steps and troubleshooting guidance.
+folder for private work. The source installation below is an alternative for users comfortable with a terminal.
 
 Windows PowerShell (enable Python's PATH option during installation if offered):
 
@@ -33,14 +43,11 @@ python3 -m venv .venv
 Use python3.12 for the first two commands if python3 selects a different Python
 version. Subsequent launches need only the last command from the same folder.
 Activation, administrator/sudo installation and execution-policy changes are not
-needed. These commands use Python's standard Windows/POSIX venv layouts; native
-Mac installation has not been verified on Mac hardware.
+needed. The source installation and packaged launches are tested on hosted Windows and Mac runners; individual devices may differ.
 
 The browser should open at http://127.0.0.1:8000, or another available port shown
 in the terminal. Verify the FREE LOCAL WORKSPACE badge, then expand Large files
-at the bottom and inspect a small test file before trying a large one. The
-website's Open my local app link assumes port 8000; use the printed address if
-the launcher chose another port. Keep the terminal open; Ctrl+C stops the app.
+at the bottom and inspect a small test file before trying a large one. Keep the terminal open; Ctrl+C stops the app.
 Reserve at least 5 GiB of temporary disk space when cleaning a 1 GiB file.
 Microsoft Excel is not required for this local web workflow, on either OS.
 

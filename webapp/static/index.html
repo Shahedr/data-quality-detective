@@ -233,58 +233,48 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
   <h3>Process up to 1 GB locally</h3>
   <p>Analyze larger files on your Windows PC or Mac without uploading them to this website. The local app is free and does not require an account or Microsoft Excel.</p>
   <p>Local analysis runs on your computer. Temporary processing files and downloaded reports are stored on your device. <a href="/privacy">Read the privacy notice</a>.</p>
-  <p><a class="secondary" href="#localInstall">Set up the local app</a> <span class="muted">Start it from the downloaded app folder. Your browser opens automatically when it is ready.</span></p>
-  <h3>1. Prepare your computer</h3>
-  <ol>
-    <li>Install <a href="https://www.python.org/downloads/">Python 3.12 or 3.13</a>. On Windows, select <strong>Add Python to PATH</strong> if the installer offers it.</li>
-    <li><a href="https://github.com/Shahedr/data-quality-detective/archive/refs/heads/main.zip">Download the app</a> and extract the ZIP file. Open the extracted folder containing <code>pyproject.toml</code>.</li>
-    <li>Have an internet connection for installation and at least 5 GB of free disk space for large-file cleaning.</li>
-  </ol>
-  <h3 id="localInstall">2. Install and start the app</h3>
-  <p>Choose your operating system below. On Windows, use the setup files for the simplest installation.</p>
-  <details><summary><strong>Windows &mdash; setup</strong></summary>
+  <h3 id="localInstall">1. Download the app for your computer</h3>
+  <p>No Python installation or commands are needed. Download the ZIP file, then follow the steps for your computer below. Allow at least 5 GB of free disk space when cleaning large files.</p>
+  <p style="display:flex;flex-wrap:wrap;gap:12px"><a class="secondary" href="https://github.com/Shahedr/data-quality-detective/releases/download/desktop-preview-1/data-quality-detective-windows-x64.zip">Download for Windows</a>
+    <a class="secondary" href="https://github.com/Shahedr/data-quality-detective/releases/download/desktop-preview-1/data-quality-detective-mac-apple-silicon.zip">Download for Mac &mdash; Apple Silicon</a>
+    <a class="secondary" href="https://github.com/Shahedr/data-quality-detective/releases/download/desktop-preview-1/data-quality-detective-mac-intel.zip">Download for Mac &mdash; Intel</a></p>
+  <p class="muted">Community preview for 64-bit Windows and Mac. These downloads are not publisher-verified; your computer may display a security warning. Read the guidance below before opening them.</p>
+  <h3>2. Extract and open the app</h3>
+  <details open><summary><strong>Windows &mdash; download and open</strong></summary>
     <ol>
-      <li>Open the extracted app folder in File Explorer. You should see <code>INSTALL_ON_WINDOWS.cmd</code> and <code>START_DATA_QUALITY_DETECTIVE.cmd</code>.</li>
-      <li>Double-click <code>INSTALL_ON_WINDOWS.cmd</code>. Wait until it says <strong>Setup complete</strong>.</li>
-      <li>Double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code>. Keep its window open. The app opens in your browser when it is ready.</li>
+      <li>Select <strong>Download for Windows</strong> above. Wait for the download to finish.</li>
+      <li>Open <strong>File Explorer</strong> (the folder icon on your taskbar), then select <strong>Downloads</strong>.</li>
+      <li>Find <code>data-quality-detective-windows-x64.zip</code>. Right-click it, select <strong>Extract All</strong>, then select <strong>Extract</strong>. Do not open the app from inside the ZIP.</li>
+      <li>Open the extracted <strong>DataQualityDetective</strong> folder. Double-click <strong>DataQualityDetective.exe</strong> (it may appear without “.exe”). Keep all the extracted files together.</li>
+      <li>A small app window opens, followed by the workspace in your browser. Keep that app window open while you work. Next time, open the same application again; you do not need to download it again.</li>
     </ol>
-    <p><strong>Important:</strong> these files must stay inside the extracted app folder. Do not move them to your desktop on their own.</p>
-    <details><summary>Alternative: Windows PowerShell setup</summary>
-    <ol>
-      <li>Do not run these commands from your home folder (<code>C:\Users\your-name</code>). In the extracted app folder, right-click an empty area and select <strong>Open in Terminal</strong>. Use a PowerShell tab.</li>
-      <li>Check that Python reports version 3.12 or 3.13, then install the app:</li>
-    </ol>
-    <pre style="overflow:auto"><code>python --version
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[web]"</code></pre>
-    <p>Start the app:</p>
-    <pre style="overflow:auto"><code>.\.venv\Scripts\python.exe -m webapp.launch_local</code></pre>
-    <p>For future use, double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code> in this folder, or run the start command again. You only need to install once.</p>
-    </details>
   </details>
-  <details><summary><strong>Mac &mdash; Terminal setup</strong></summary>
+  <details><summary><strong>Mac &mdash; download and open</strong></summary>
     <ol>
-      <li>Open <strong>Terminal</strong>. Type <code>cd </code>, including the space, drag the extracted app folder into the window, and press Return.</li>
-      <li>Check that Python reports version 3.12 or 3.13, then install the app:</li>
+      <li>Open the <strong>Apple menu &gt; About This Mac</strong>. If you see <strong>Chip</strong> with an M-series name, choose the <strong>Apple Silicon</strong> download. If you see an <strong>Intel</strong> processor, choose <strong>Intel</strong>.</li>
+      <li>Select the matching download above. Open <strong>Finder &gt; Downloads</strong> after it finishes.</li>
+      <li>Double-click the downloaded ZIP to extract it, if your browser has not already extracted it.</li>
+      <li>Drag <strong>DataQualityDetective.app</strong> into <strong>Applications</strong>. Open Applications and double-click the app.</li>
+      <li>A small app window opens, followed by the workspace in your browser. Keep the app window open while you work. Next time, open it from Applications.</li>
     </ol>
-    <pre style="overflow:auto"><code>python3 --version
-python3 -m venv .venv
-./.venv/bin/python -m pip install -e ".[web]"</code></pre>
-    <p>Start the app:</p>
-    <pre style="overflow:auto"><code>./.venv/bin/python -m webapp.launch_local</code></pre>
-    <p>For future use, open Terminal in the same app folder and run the start command again. You only need to install once.</p>
+  </details>
+  <details><summary><strong>If your computer displays a security warning</strong></summary>
+    <p>These free community downloads do not have a verified publisher certificate or Apple notarization. We have not purchased those services. A warning about an unknown publisher does not establish whether a file is safe.</p>
+    <p>Download only from <a href="https://github.com/Shahedr/data-quality-detective/releases/tag/desktop-preview-1">our official release page</a>. That page includes SHA-256 checksums to check whether a download has changed. A matching checksum is not a security certification.</p>
+    <p>On Windows, an unknown-publisher warning may offer <strong>More info</strong> and <strong>Run anyway</strong>. Proceed only if you have verified the source and choose to trust the download. On Mac, follow <a href="https://support.apple.com/102445">Apple’s instructions for opening an app from an unidentified developer</a>. Your computer or workplace may prohibit this.</p>
+    <p><strong>If a warning identifies malware, stop and contact <a href="mailto:shahed2338@gmail.com">support</a>.</strong> Do not disable antivirus protection or your computer’s security settings.</p>
+    <p>The app stays free. To discuss supporting future publisher verification and maintenance, <a href="mailto:shahed2338@gmail.com?subject=Supporting%20Data%20Quality%20Detective">contact Shahed</a>. No contribution is required.</p>
   </details>
   <h3>3. Open and review your file</h3>
   <ol>
-    <li>The app opens in your browser. Look for <strong>FREE LOCAL WORKSPACE</strong> at the top. Keep the terminal window open while you work.</li>
+    <li>The app opens in your browser. Look for <strong>FREE LOCAL WORKSPACE</strong> at the top. Keep the small app window open while you work.</li>
     <li>At the bottom of the page, expand <strong>Large files &middot; up to 1 GiB &middot; on this computer</strong>. Choose your CSV, XLSX or XLSM file, then select <strong>Inspect large file</strong>.</li>
     <li>Review the overview and choose a worksheet if needed. To clean the file, open <strong>Prepare a cleaned large-file copy</strong>, preview the changes and download a separate copy.</li>
-    <li>When finished, press <kbd>Ctrl+C</kbd> in the terminal to close the app.</li>
+    <li>Finish or cancel any processing, then select <strong>Quit</strong> in the small app window. Closing the browser tab alone does not stop the app.</li>
   </ol>
   <details><summary>Need help?</summary>
-    <p><strong>Python is not found:</strong> reopen your terminal after installing it. On Windows with Python 3.12 installed, try <code>py -3.12</code> instead of <code>python</code> for the version check and environment-creation commands. On Mac, try <code>python3.12</code> instead of <code>python3</code>.</p>
-    <p><strong>The browser does not open:</strong> copy the web address shown in the terminal into your browser. It usually starts with <code>http://127.0.0.1:8000</code>; the number may differ if another app is using it.</p>
-    <p><strong>Installation fails:</strong> check your internet connection and Python version. Run the commands from the extracted app folder using your normal user account.</p>
+    <p><strong>The browser does not open:</strong> select <strong>Open workspace</strong> in the small app window. You can also type the local address displayed there into your browser.</p>
+    <p><strong>The app does not start:</strong> check that you extracted the ZIP, chose the correct download for your computer, and kept the application’s files together. Read any startup message in the app window. If it still fails, contact support with your operating system and the exact error message; do not include private spreadsheet data.</p>
     <p><strong>A file is rejected:</strong> read the message shown in the app. File type, workbook structure and available disk space also affect what can be processed. Password-protected files are not supported.</p>
   </details>
   <details><summary>File limits and privacy</summary>

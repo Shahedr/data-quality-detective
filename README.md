@@ -7,7 +7,7 @@
 
 **Free, open-source spreadsheet and CSV quality analyzer. No account, subscriptions, ads, or payments.**
 
-[**Open the free web app →**](https://data-quality-detective-demo.vercel.app) · [Install the Python CLI](#install) · [Report an issue](https://github.com/Shahedr/data-quality-detective/issues)
+[**Open the free web app â†’**](https://data-quality-detective-demo.vercel.app) Â· [Install the Python CLI](#install) Â· [Report an issue](https://github.com/Shahedr/data-quality-detective/issues)
 
 ![Data Quality Detective demo](assets/dqdetect-demo-v100.svg)
 
@@ -22,9 +22,9 @@ Analyze CSV, XLSX, and XLSM files for missing data, duplicate rows, invalid date
 
 **Important privacy note:** Online uploads are transmitted to Vercel's server to be analyzed. This project does not intentionally keep spreadsheet files in a database, but hosting infrastructure may use temporary files and operational logs. **Do not upload confidential, regulated, personal or highly sensitive data.** For private work, run the tool locally on your own computer.
 
-The online service is a free, best-effort demo-quality utility—not an enterprise-managed document processing service. The server enforces a 4 MiB hosted upload cap (10 MiB local), with a combined workbook limit of 100,000 rows, 200 columns per sheet, and 40 sheets; resource limits and hosting quotas apply. Spreadsheet macros are **never executed by the website**.
+The online service is a free, best-effort demo-quality utilityâ€”not an enterprise-managed document processing service. The server enforces a 4 MiB hosted upload cap (10 MiB local), with a combined workbook limit of 100,000 rows, 200 columns per sheet, and 40 sheets; resource limits and hosting quotas apply. Spreadsheet macros are **never executed by the website**.
 
-## Run locally — no upload to someone else's server
+## Run locally â€” no upload to someone else's server
 
 **Windows:** Download the repository as a ZIP and extract it. Run `INSTALL_ON_WINDOWS.cmd` once, then double-click `START_DATA_QUALITY_DETECTIVE.cmd`. A separate supervised Excel-only validator is available through `START_EXCEL_VALIDATOR.cmd` for advanced Windows users.
 
@@ -245,34 +245,34 @@ A freight field containing text such as `Included` may carry business meaning. A
 
 dqdetect therefore follows one rule throughout the project:
 
-**detect → report → review → decide**
+**detect â†’ report â†’ review â†’ decide**
 
 ## Project structure
 
 ~~~text
 data-quality-detective/
-├── action.yml
-├── dqdetect/
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── checks.py
-│   ├── cli.py
-│   ├── compare.py
-│   ├── database.py
-│   ├── io.py
-│   ├── profiler.py
-│   ├── report.py
-│   ├── schema.py
-│   └── types.py
-├── examples/
-├── tests/
-├── .github/workflows/
-│   ├── tests.yml
-│   └── publish-to-pypi.yml
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE
-└── pyproject.toml
+â”œâ”€â”€ action.yml
+â”œâ”€â”€ dqdetect/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ __main__.py
+â”‚   â”œâ”€â”€ checks.py
+â”‚   â”œâ”€â”€ cli.py
+â”‚   â”œâ”€â”€ compare.py
+â”‚   â”œâ”€â”€ database.py
+â”‚   â”œâ”€â”€ io.py
+â”‚   â”œâ”€â”€ profiler.py
+â”‚   â”œâ”€â”€ report.py
+â”‚   â”œâ”€â”€ schema.py
+â”‚   â””â”€â”€ types.py
+â”œâ”€â”€ examples/
+â”œâ”€â”€ tests/
+â”œâ”€â”€ .github/workflows/
+â”‚   â”œâ”€â”€ tests.yml
+â”‚   â””â”€â”€ publish-to-pypi.yml
+â”œâ”€â”€ CHANGELOG.md
+â”œâ”€â”€ CONTRIBUTING.md
+â”œâ”€â”€ LICENSE
+â””â”€â”€ pyproject.toml
 ~~~
 
 The package separates command-line handling, input loading, profiling, detection rules, schema validation, comparison, database access, and report generation so each part can be tested independently.
@@ -281,7 +281,7 @@ The package separates command-line handling, input loading, profiling, detection
 
 The automated test suite covers the CLI, file loading, profiling rules, reporting, schema validation, dataset comparison, database loading, and deterministic IQR behavior.
 
-GitHub Actions runs the tests across Python **3.10–3.13**, performs a real PostgreSQL integration check, smoke-tests the reusable GitHub Action, builds the package, and validates distribution metadata.
+GitHub Actions runs the tests across Python **3.10â€“3.13**, performs a real PostgreSQL integration check, smoke-tests the reusable GitHub Action, builds the package, and validates distribution metadata.
 
 Run the suite locally with:
 
