@@ -38,6 +38,10 @@ def main():
                 target = notices / str(entry)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(package.locate_file(entry), target)
+    if system == 'Darwin':
+        # Adding notices changes bundle resources, so renew its ad-hoc seal.
+        subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(folder)], check=True)
+        subprocess.run(['codesign', '--verify', '--deep', '--strict', str(folder)], check=True)
     subprocess.run([str(executable), '--self-test'], check=True, timeout=120)
     output = ROOT / 'desktop-dist'
     output.mkdir(exist_ok=True)
@@ -53,6 +57,8 @@ def main():
             with zipfile.ZipFile(archive) as zipped:
                 zipped.extractall(temporary)
         extracted = Path(temporary) / folder.name / executable.relative_to(folder)
+        if system == 'Darwin':
+            subprocess.run(['codesign', '--verify', '--deep', '--strict', str(Path(temporary) / folder.name)], check=True)
         subprocess.run([str(extracted), '--self-test'], check=True, timeout=120)
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     archive.with_suffix('.zip.sha256').write_text(f'{checksum}  {archive.name}\n', encoding='utf-8')
