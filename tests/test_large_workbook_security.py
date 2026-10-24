@@ -28,7 +28,8 @@ def test_stream_excel_formula_hidden_and_unchanged(tmp_path):
     result = stream_workbook(path)
     assert result['kind'] == 'Excel'
     assert result['sheets'][0] == {'name': 'Sheet', 'state': 'visible', 'stored_rows': 2,
-                                  'columns': 2, 'stored_cells': 4, 'formulas': 1, 'cached_errors': 0}
+                                  'columns': 2, 'stored_cells': 4, 'formulas': 1, 'cached_errors': 0,
+                                  'preview': {'columns': ['A', 'B'], 'rows': [{'row_number': 1, 'values': ['name', 'total']}, {'row_number': 2, 'values': [' Alice ', '=1+2']}]}}
     assert result['sheets'][1]['state'] == 'hidden'
     assert not result['vba_present']
     assert path.read_bytes() == before

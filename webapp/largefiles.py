@@ -16,12 +16,13 @@ from pathlib import Path
 
 from webapp.largeworkbook import stream_workbook
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, Form
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, Form, Query
 from fastapi.responses import StreamingResponse
 import anyio
 from pydantic import BaseModel, ConfigDict, Field
 from webapp.workspace import CleanOptions
 from webapp.largeclean import clean_csv, clean_excel
+from webapp.largegrid import GridIndex, read_rows
 
 router = APIRouter(prefix="/api/large")
 MAX_BYTES = 1024 ** 3
@@ -66,6 +67,10 @@ def remove_files(job):
     job['path'].unlink(missing_ok=True)
     if job.get('output'):
         job['output'].unlink(missing_ok=True)
+    for key in ('grid', 'clean_grid'):
+        if job.get(key):
+            job[key].unlink(missing_ok=True)
+            job[key].with_name(job[key].name+'-journal').unlink(missing_ok=True)
 
 
 def local_only(request):
@@ -112,10 +117,13 @@ def create_upload(spec: UploadSpec, request: Request):
         _jobs[identifier] = {"token": token, "path": path, "size": spec.size, "received": 0,
                              "created": time.time(), "status": "uploading", "result": None,
                              "suffix": suffix, "cancel": threading.Event(), 'clean': spec.clean,
-                             'output': _root / (identifier+'.cleaned'+suffix) if spec.clean else None}
+                             'output': _root / (identifier+'.cleaned'+suffix) if spec.clean else None,
+                             'grid': _root / (identifier+'.grid.sqlite'),
+                             'clean_grid': _root / (identifier+'.clean-grid.sqlite') if spec.clean else None}
         # Bound retained report metadata even if many small jobs finish in an hour.
         finished = [key for key, value in _jobs.items() if value['status'] in {'complete', 'failed', 'cancelled'}]
         for key in finished[:-20]:
+            remove_files(_jobs[key])
             del _jobs[key]
     return {"id": identifier, "token": token, "chunk_bytes": CHUNK_BYTES, "max_bytes": MAX_BYTES}
 
@@ -146,7 +154,7 @@ async def upload_chunk(identifier: str, request: Request, x_upload_token: str = 
         return {"received": job["received"]}
 
 
-def csv_rows(path, check=lambda: None, summary=None):
+def csv_rows(path, check=lambda: None, summary=None, row_sink=None):
     csv.field_size_limit(1024 * 1024)
     with path.open("r", encoding="utf-8-sig", newline="") as source:
         record_size = 0
@@ -167,7 +175,8 @@ def csv_rows(path, check=lambda: None, summary=None):
         if not columns or len(columns) > 200 or len(set(columns)) != len(columns) or any(not c.strip() or len(c) > 200 for c in columns):
             raise ValueError("CSV needs a nonempty header with unique names and at most 200 columns.")
         if summary is not None:
-            summary.update(columns=len(columns), missing=dict.fromkeys(columns, 0), rows=0)
+            summary.update(columns=len(columns), missing=dict.fromkeys(columns, 0), rows=0,
+                           preview={'columns': columns[:20], 'rows': []})
         yield columns
         count = 0
         for row in rows:
@@ -179,8 +188,12 @@ def csv_rows(path, check=lambda: None, summary=None):
             count += 1
             if summary is not None:
                 summary['rows'] += 1
+                if len(summary['preview']['rows']) < 20:
+                    summary['preview']['rows'].append({'row_number': count+1, 'values': [v[:500] for v in row[:20]]})
                 for column, value in zip(columns, row):
                     summary['missing'][column] += not value.strip()
+            if row_sink:
+                row_sink('', count+1, {i: value[:500] for i, value in enumerate(row)})
             yield row
 
 
@@ -193,24 +206,26 @@ def file_hash(path, check):
     return digest.hexdigest()
 
 
-def stream_csv(path, check=lambda: None):
-    rows = csv_rows(path, check)
-    columns = next(rows)
-    missing, count = [0]*len(columns), 0
-    for row in rows:
-        count += 1
-        for i, value in enumerate(row):
-            missing[i] += not value.strip()
-    return {"rows": count, "columns": len(columns), "missing": dict(zip(columns, missing)),
+def stream_csv(path, check=lambda: None, row_sink=None):
+    summary = {}
+    for _ in csv_rows(path, check, summary, row_sink):
+        pass
+    return {**summary,
                 "sha256": file_hash(path, check), "bytes": path.stat().st_size,
-                "kind": "CSV", "notice": "Complete-file row and missing-value overview. Preview full-file cleaning to prepare a separate CSV copy. Charts, templates and interactive grids use the smaller-file workspace. Original file was not modified."}
+                "kind": "CSV", "notice": "Complete-file row and missing-value overview. Preview full-file cleaning to prepare a separate CSV copy. Browse the spreadsheet in blocks of rows; charts and audit templates use the smaller-file workspace. Original file was not modified."}
 
 
 def process(identifier):
     with _lock:
         job = _jobs[identifier]
         job["status"] = "processing"
+    grid = cleaned_grid = None
     try:
+        if job['cancel'].is_set():
+            raise InterruptedError('Cancelled')
+        grid = GridIndex(job['grid'])
+        if job.get('clean'):
+            cleaned_grid = GridIndex(job['clean_grid'])
         deadline = time.monotonic() + 900
         disk_check = time.monotonic()
         def check():
@@ -227,17 +242,22 @@ def process(identifier):
             result = {'kind': 'CSV', 'bytes': job['path'].stat().st_size,
                       'notice': 'Complete-file CSV cleaning with original row and missing-value counts. Original unchanged.'}
         else:
-            result = stream_csv(job['path'], check) if job['suffix'] == '.csv' else stream_workbook(job['path'], check)
+            result = stream_csv(job['path'], check, grid.row) if job['suffix'] == '.csv' else stream_workbook(job['path'], check, grid.row, grid.string)
         if job.get('clean'):
             options = job['clean']
-            preview = (clean_csv(job['path'], job['output'], options, csv_rows(job['path'], check, result), check)
-                       if job['suffix'] == '.csv' else clean_excel(job['path'], job['output'], options, check))
+            preview = (clean_csv(job['path'], job['output'], options, csv_rows(job['path'], check, result, grid.row), check, cleaned_grid.row)
+                       if job['suffix'] == '.csv' else clean_excel(job['path'], job['output'], options, check, cleaned_grid.row))
             if job['suffix'] == '.csv':
                 result['sha256'] = file_hash(job['path'], check)
             preview['output_bytes'] = job['output'].stat().st_size
             preview['output_sha256'] = file_hash(job['output'], check)
             preview['fingerprint'] = hashlib.sha256((result['sha256']+options.model_dump_json()+preview['output_sha256']).encode()).hexdigest()
             result['cleaning'] = preview
+        grid.close()
+        grid = None
+        if cleaned_grid:
+            cleaned_grid.close()
+            cleaned_grid = None
         with _lock:
             job["result"], job["status"] = result, 'review' if job.get('clean') else "complete"
     except InterruptedError:
@@ -248,7 +268,13 @@ def process(identifier):
             message = str(exc)[:300] if isinstance(exc, ValueError) else exc.detail if isinstance(exc, HTTPException) else 'Unable to process file within safety limits. Check format, encoding, record size or workbook expansion. Processing is limited to 15 minutes.'
             job["result"], job["status"] = {"error": message}, "failed"
     finally:
+        if grid:
+            grid.close(commit=False)
+        if cleaned_grid:
+            cleaned_grid.close(commit=False)
         job["path"].unlink(missing_ok=True)
+        if job['status'] in {'failed', 'cancelled'}:
+            remove_files(job)
         if job['status'] in {'failed', 'cancelled'} and job.get('output'):
             job['output'].unlink(missing_ok=True)
 
@@ -272,6 +298,43 @@ def upload_status(identifier: str, request: Request, x_upload_token: str = Heade
         cleanup()
         job = job_for(identifier, x_upload_token)
         return {key: job[key] for key in ("status", "received", "size", "result")}
+
+
+@router.get('/uploads/{identifier}/rows')
+def grid_rows(identifier: str, request: Request, x_upload_token: str = Header(''),
+              sheet: str = Query('', max_length=200), offset: int = Query(0, ge=0),
+              column: int = Query(0, ge=0, le=16383), cleaned: bool = False):
+    local_only(request)
+    with _lock:
+        cleanup()
+        job = job_for(identifier, x_upload_token)
+        if job['status'] not in {'complete', 'review'} or not job['grid'].exists():
+            raise HTTPException(409, 'The spreadsheet is not ready to browse.')
+        result = job['result']
+        if result['kind'] == 'CSV':
+            names = list(result['missing'])
+            total, columns = result['rows']+1, len(names)
+            if cleaned and result.get('cleaning'):
+                total = result['cleaning']['rows_after']+1
+            sheet = ''
+        else:
+            selected = next((item for item in result['sheets'] if item['name'] == sheet), None)
+            if selected is None:
+                raise HTTPException(422, 'Choose an existing worksheet.')
+            total, columns, names = selected['stored_rows'], selected['columns'], None
+        index = job['grid']
+        if cleaned:
+            if not result.get('cleaning'):
+                raise HTTPException(409, 'Prepare a cleaned preview first.')
+            if result['kind'] == 'CSV' or sheet == result['cleaning'].get('sheet'):
+                index = job['clean_grid']
+        # CSV headings are stored in metadata rather than duplicated in the index.
+        csv_header = names is not None and offset == 0
+        rows = read_rows(index, job['grid'], sheet, max(0, offset-(names is not None)), 49 if csv_header else 50, column, columns)
+        if csv_header:
+            rows.insert(0, {'row_number': 1, 'values': names[column:column+20]})
+        job['created'] = time.time()
+        return {'rows': rows, 'total': total, 'columns_total': columns, 'offset': offset, 'column': column}
 
 
 @router.delete("/uploads/{identifier}")

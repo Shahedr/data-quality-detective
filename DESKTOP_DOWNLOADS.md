@@ -41,7 +41,10 @@ and operating-system warning dialogs are not exhaustively tested.
 
 Look for FREE LOCAL WORKSPACE. Expand Large files at the bottom for CSV/XLSX/XLSM
 files up to 1 GiB. Inspect first, review changes and download a separate copy.
-Charts and the detailed grid use the smaller-file workspace. Original files are
+Browse rows and columns with the spreadsheet controls and switch Excel worksheets.
+Only 50 rows and 20 columns load at a time, with 500 displayed characters per cell.
+Charts and audit templates use the smaller-file workspace. Browsing indexes stay
+on your computer until discarded, normal shutdown, or one hour of inactivity. Original files are
 unchanged. Preserved macros remain untrusted unless you know their source.
 Cancel active processing before quitting. Keep at least 5 GB of disk space free
 for large-file cleaning. Temporary files and downloaded copies stay on your device.

@@ -41,10 +41,11 @@ def record_change(stats, row, column, old, new):
             stats['changes'].append({'row': row, 'column': column, 'before': old[:500], 'after': new[:500]})
 
 
-def clean_csv(source, output, options, rows, check):
+def clean_csv(source, output, options, rows, check, row_sink=None):
     """rows yields a bounded header then records, reusing the upload parser."""
     stats = stats_for()
     columns = next(rows)
+    stats['copy_preview'] = {'columns': columns[:20], 'rows': []}
     if len(set(options.columns)) != len(options.columns) or any(c not in columns for c in options.columns):
         raise ValueError('Select unique existing CSV column names.')
     if (options.trim or options.case != 'keep' or options.date_format) and not options.columns:
@@ -73,6 +74,10 @@ def clean_csv(source, output, options, rows, check):
                         continue
                 writer.writerow(row)
                 kept += 1
+                if row_sink:
+                    row_sink('', kept+1, {i: v[:500] for i, v in enumerate(row)})
+                if len(stats['copy_preview']['rows']) < 20:
+                    stats['copy_preview']['rows'].append({'row_number': kept+1, 'values': [v[:500] for v in row[:20]]})
                 if count % 10000 == 0:
                     db.commit()
                     if shutil.disk_usage(output.parent).free < 256*1024**2:
@@ -158,7 +163,7 @@ def patch_cells(source, target, transform, check):
             return
 
 
-def clean_excel(source, output, options, check):
+def clean_excel(source, output, options, check, row_sink=None):
     if options.remove_duplicates:
         raise ValueError('Excel row deletion can break references and VBA and is not supported.')
     if not options.columns or len(set(options.columns)) != len(options.columns) or any(not re.fullmatch('[A-Z]{1,3}', c) for c in options.columns):
@@ -251,9 +256,11 @@ def clean_excel(source, output, options, check):
                         hashes[item.filename] = digest.hexdigest()
             with ZipFile(output) as verified:
                 parser = make_parser()
-                parser.setContentHandler(SheetOverview())
+                inspected = SheetOverview(row_sink=(lambda number, cells, refs: row_sink(options.sheet, number, cells, refs)) if row_sink else None)
+                parser.setContentHandler(inspected)
                 with verified.open(part) as reader:
                     parser.parse(CheckedReader(reader, check))
+                stats['copy_preview'] = inspected.resolve_preview(lambda index: db.execute('SELECT value FROM strings WHERE id=?', (index,)).fetchone()[0])
                 for name, expected in hashes.items():
                     digest = hashlib.sha256()
                     with verified.open(name) as reader:

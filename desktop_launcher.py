@@ -68,6 +68,24 @@ def self_test():
                           headers={'Content-Type': 'multipart/form-data; boundary=' + boundary})
         with urlopen(request, timeout=30) as response:
             assert json.loads(response.read())['summary']['rows'] == 2
+        def api(path, method='GET', data=None, headers=None):
+            with urlopen(Request(local.url+path, data=data, method=method, headers=headers or {}), timeout=30) as response:
+                return json.loads(response.read())
+        sample = b'id,value\n1,10\n2,20\n'
+        job = api('/api/large/uploads', 'POST', json.dumps({'name': 'grid.csv', 'size': len(sample)}).encode(), {'Content-Type': 'application/json'})
+        path = '/api/large/uploads/'+job['id']
+        token = {'X-Upload-Token': job['token']}
+        api(path, 'PUT', sample, {**token, 'X-Upload-Offset': '0'})
+        api(path+'/complete', 'POST', headers=token)
+        for _ in range(100):
+            state = api(path, headers=token)
+            if state['status'] not in {'queued', 'processing'}:
+                break
+            time.sleep(.1)
+        assert state['status'] == 'complete', state
+        grid = api(path+'/rows', headers=token)
+        assert grid['total'] == 3 and grid['rows'][2]['values'] == ['2', '20']
+        api(path, 'DELETE', headers=token)
     finally:
         assert local.stop(), 'Packaged service did not stop cleanly'
     return 0

@@ -94,7 +94,7 @@ explicit discard or expiry; only one pending copy/job is allowed. Downloads
 stream through the browser without loading the entire file into JavaScript.
 CSV quoting/line endings normalize; spreadsheet software may interpret
 formula-like CSV text when opening it. Large mode does not yet provide the
-smaller workspace's templates, grid or charts. Cached errors are not recalculation.
+smaller workspace's templates or charts. The disk-backed viewer browses all stored rows and columns in blocks of up to 50 rows and 20 columns; displayed cells are capped at 500 characters. Cached errors are not recalculation.
 
 Safety bounds: UTF-8 CSV, 200 unique nonblank headings (200 characters each),
 1 MiB per CSV record; Excel up to 40 worksheets, 10,000 package entries, 8 GiB
@@ -127,3 +127,14 @@ XlsxWriter greeting fixture, follows existing Excel policy, and pauses for
 per-workbook approval with `--approve-in-excel`. Reports are in `reports/`.
 `verify_large_local.py --clean` verifies actual 1 GiB CSV and XLSX previews,
 full streamed downloads, hashes and cleanup.
+
+### Large spreadsheet browsing
+
+The local viewer stores a temporary SQLite browsing index on your computer, including
+cell text capped at 500 characters per cell. It supports CSV and Excel worksheets,
+including hidden worksheets, with original row numbers and Excel column letters.
+Use Next/Previous rows, Go to row, and Next/Previous columns to navigate. Cleaned
+previews can be browsed at the same position before download. The original upload
+is deleted after processing; indexes are deleted on discard, normal shutdown, or
+one hour without activity. A crash can leave temporary files for operating-system
+cleanup. Excel formulas are shown as stored text and are never executed.
