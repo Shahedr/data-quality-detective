@@ -23,7 +23,13 @@ Python is included. You do not need to install it or enter commands.
 
 These community builds have no verified publisher signature and are not
 notarized by Apple. macOS uses an ad-hoc signature required for execution; it
-does not verify the developer's identity. No paid certificate was purchased.
+does not verify the developer's identity. Publisher verification is not configured for this community release.
+
+On Apple Silicon and Intel macOS runners, Gatekeeper rejected quarantined test
+copies and no stapled notarization ticket was found. Expect the initial download
+to be blocked by default. See Apple’s official guidance below; do not disable
+Gatekeeper or bypass a malware warning. Normal app-launch, integrity and data
+processing tests passed before quarantine was added.
 
 Only download from this repository's official release page. If Windows displays
 a publisher/reputation warning, verify the source and published SHA-256 before
