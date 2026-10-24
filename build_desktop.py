@@ -30,6 +30,7 @@ def main():
     notices = folder / ('Contents/Resources/licenses' if system == 'Darwin' else 'licenses')
     notices.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / 'LICENSE', notices / 'DataQualityDetective-LICENSE.txt')
+    shutil.copy2(ROOT / 'licenses/Python-LICENSE.txt', notices / 'Python-LICENSE.txt')
     shutil.copy2(ROOT / 'DESKTOP_DOWNLOADS.md', notices.parent / 'READ_ME_FIRST.md')
     for package in distributions():
         for entry in package.files or []:
