@@ -168,13 +168,24 @@ def self_test():
 
 def main():
     if '--self-test' in sys.argv:
+        from pathlib import Path
+        report = None
+        if '--self-test-report' in sys.argv:
+            index = sys.argv.index('--self-test-report')+1
+            if index >= len(sys.argv):
+                return 2
+            report = Path(sys.argv[index])
+        error = None
         try:
-            return self_test()
+            result = self_test()
         except Exception:
             import traceback
-            from pathlib import Path
-            Path('desktop-self-test.log').write_text(traceback.format_exc(), encoding='utf-8')
-            return 1
+            error = traceback.format_exc()
+            Path('desktop-self-test.log').write_text(error, encoding='utf-8')
+            result = 1
+        if report:
+            report.write_text(json.dumps({'passed': result == 0, 'error': error}), encoding='utf-8')
+        return result
     import tkinter as tk
     from tkinter import ttk
     root = tk.Tk()

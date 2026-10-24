@@ -1,5 +1,7 @@
 from pathlib import Path
 from runpy import run_path
+import json
+import sys
 
 LocalApp = run_path(str(Path(__file__).resolve().parents[1] / 'desktop_launcher.py'))['LocalApp']
 
@@ -22,3 +24,18 @@ def test_startup_failure_is_reported_to_launcher(monkeypatch):
     local.thread.start()
     assert local.stop()
     assert local.error == 'Test port unavailable'
+
+
+def test_app_launcher_writes_explicit_result_for_launch_services(tmp_path, monkeypatch):
+    main = run_path(str(Path(__file__).resolve().parents[1] / 'desktop_launcher.py'))['main']
+    report = tmp_path / 'launch result.json'
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, 'argv', ['app', '--self-test', '--self-test-report', str(report)])
+    monkeypatch.setitem(main.__globals__, 'self_test', lambda: 0)
+    assert main() == 0 and json.loads(report.read_text())['passed']
+    def failed():
+        raise RuntimeError('Test launch failure')
+    monkeypatch.setitem(main.__globals__, 'self_test', failed)
+    assert main() == 1
+    assert not json.loads(report.read_text())['passed']
+    assert 'Test launch failure' in json.loads(report.read_text())['error']

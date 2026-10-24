@@ -32,9 +32,19 @@ Apple's official guidance: https://support.apple.com/102445. Do not disable
 system-wide security protections. If any warning identifies malware, stop and
 report it to shahed2338@gmail.com; do not proceed.
 
+If macOS says an app is damaged or identifies malware, stop. Download again from
+the official release and contact support if it persists, including your macOS
+version, processor type and exact message. Do not send private spreadsheet data.
+A workplace-managed Mac may prohibit unsigned apps; respect that policy.
+
 Checksums detect changed downloads; they are not a malware-free certification.
 Automated packaged-launch, local HTTP, interface-file and sample CSV checks must
-pass on all three platforms before these assets are published. Individual devices
+pass on all three platforms before these assets are published. The extracted app
+also processes a real 1 GiB CSV and browses its last row. Mac checks move the app
+to a folder with spaces, verify its bundle, and open it through the normal macOS
+app launcher. A disposable quarantined copy is assessed against the runner's
+security policy. The accompanying .verification.json file records the results;
+expected unsigned-app rejection does not become a security approval. Individual devices
 and operating-system warning dialogs are not exhaustively tested.
 
 ## Working with files
