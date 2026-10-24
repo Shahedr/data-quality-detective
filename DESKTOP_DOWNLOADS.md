@@ -13,6 +13,10 @@ Python is included. You do not need to install it or enter commands.
 
 ## Mac
 
+The same packages passed automated tests on macOS 15 and 26, for Apple Silicon
+and Intel. Other macOS versions and individual personal-device approval dialogs
+have not been verified. See the accompanying verification reports.
+
 1. Open Apple menu > About This Mac. If it shows Chip and an M-series name,
    choose the Apple Silicon ZIP. If it shows an Intel processor, choose Intel.
 2. Download the matching ZIP and double-click it in Downloads to extract it.
