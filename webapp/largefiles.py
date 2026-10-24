@@ -321,7 +321,7 @@ def grid_rows(identifier: str, request: Request, x_upload_token: str = Header(''
             selected = next((item for item in result['sheets'] if item['name'] == sheet), None)
             if selected is None:
                 raise HTTPException(422, 'Choose an existing worksheet.')
-            total, columns, names = selected['stored_rows'], selected['columns'], None
+            total, columns, names = selected['max_row'], selected['columns'], None
         index = job['grid']
         if cleaned:
             if not result.get('cleaning'):
@@ -330,7 +330,7 @@ def grid_rows(identifier: str, request: Request, x_upload_token: str = Header(''
                 index = job['clean_grid']
         # CSV headings are stored in metadata rather than duplicated in the index.
         csv_header = names is not None and offset == 0
-        rows = read_rows(index, job['grid'], sheet, max(0, offset-(names is not None)), 49 if csv_header else 50, column, columns)
+        rows = read_rows(index, job['grid'], sheet, max(0, offset-(names is not None)), 49 if csv_header else 50, column, columns, total if names is None else None)
         if csv_header:
             rows.insert(0, {'row_number': 1, 'values': names[column:column+20]})
         job['created'] = time.time()

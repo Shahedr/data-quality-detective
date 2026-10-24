@@ -40,6 +40,7 @@ def test_excel_grid_worksheets_formulas_shared_strings_and_cleaned_preview():
         book.active.append([' Alice ', '=1+2'])
     book.create_sheet('Hidden').append(['<script>alert(1)</script>'])
     book['Hidden'].sheet_state = 'hidden'
+    book.create_sheet('Sparse')['C100'] = 'Original coordinate'
     buffer = io.BytesIO()
     book.save(buffer)
     # Model the shared-string representation Excel commonly writes.
@@ -66,5 +67,7 @@ def test_excel_grid_worksheets_formulas_shared_strings_and_cleaned_preview():
     assert cleaned['rows'][1]['values'] == ['Alice', '=1+2']
     hidden = client.get(endpoint+'/rows?sheet=Hidden&cleaned=true', headers=token).json()
     assert hidden['rows'][0]['values'] == ['<script>alert(1)</script>']
+    sparse = client.get(endpoint+'/rows?sheet=Sparse&offset=99', headers=token).json()
+    assert sparse['total'] == 100 and sparse['rows'] == [{'row_number': 100, 'values': ['', '', 'Original coordinate']}]
     assert client.get(endpoint+'/rows?sheet=Unknown', headers=token).status_code == 422
     assert len(state['result']['sheets'][0]['preview']['rows']) == 20

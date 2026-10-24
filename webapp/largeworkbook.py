@@ -245,6 +245,7 @@ def stream_workbook(path, check=lambda: None, row_sink=None, string_sink=None):
             overviews.append(overview)
             results.append({'name': sheet.attrib['name'], 'state': sheet.attrib.get('state', 'visible'),
                             'stored_rows': overview.rows, 'columns': overview.columns,
+                            'max_row': overview.max_row,
                             'stored_cells': overview.cells, 'formulas': overview.formulas,
                             'cached_errors': overview.errors, 'preview': overview.preview})
         needed = {identifier for overview in overviews for identifier in overview.preview_cells.values()}

@@ -32,11 +32,12 @@ class GridIndex:
             db.close()
 
 
-def read_rows(path, strings_path, sheet, offset, limit, column, columns):
+def read_rows(path, strings_path, sheet, offset, limit, column, columns, extent=None):
     # Read-only connections cannot accidentally recreate deleted/expired indexes.
     with closing(sqlite3.connect(path.as_uri()+'?mode=ro', uri=True)) as db, closing(sqlite3.connect(strings_path.as_uri()+'?mode=ro', uri=True)) as strings:
         result, cache = [], {}
-        for number, cells, refs in db.execute('SELECT number,cells,refs FROM rows WHERE sheet=? ORDER BY number LIMIT ? OFFSET ?', (sheet, limit, offset)):
+        query = db.execute('SELECT number,cells,refs FROM rows WHERE sheet=? AND number>? AND number<=? ORDER BY number', (sheet, offset, offset+limit)) if extent is not None else db.execute('SELECT number,cells,refs FROM rows WHERE sheet=? ORDER BY number LIMIT ? OFFSET ?', (sheet, limit, offset))
+        for number, cells, refs in query:
             values, references = json.loads(cells), json.loads(refs)
             row = []
             for index in range(column, min(column+20, columns)):
@@ -52,4 +53,7 @@ def read_rows(path, strings_path, sheet, offset, limit, column, columns):
                 else:
                     row.append(values.get(key, ''))
             result.append({'row_number': number, 'values': row})
+        if extent is not None:
+            found = {row['row_number']: row for row in result}
+            return [found.get(number, {'row_number': number, 'values': ['']*max(0, min(20, columns-column))}) for number in range(offset+1, min(offset+limit, extent)+1)]
         return result
