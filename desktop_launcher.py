@@ -127,6 +127,40 @@ def self_test():
         assert downloaded['Hidden'].sheet_state == 'hidden'
         downloaded.close()
         api(path, 'DELETE', headers=token)
+        if '--large-file-test' in sys.argv:
+            import tempfile
+            from pathlib import Path
+            size = 1024**3
+            with tempfile.TemporaryDirectory(prefix='dqd-packaged-fixture-') as directory:
+                fixture = Path(directory) / 'one-gib.csv'
+                block = (b'x'*1023+b'\n')*4096
+                with fixture.open('wb') as target:
+                    target.write(b'value\n')
+                    remaining = size-6
+                    while remaining:
+                        portion = block[:min(remaining, len(block))]
+                        target.write(portion)
+                        remaining -= len(portion)
+                assert fixture.stat().st_size == size
+                job = api('/api/large/uploads', 'POST', json.dumps({'name': fixture.name, 'size': size}).encode(), {'Content-Type': 'application/json'})
+                path, token = '/api/large/uploads/'+job['id'], {'X-Upload-Token': job['token']}
+                with fixture.open('rb') as source:
+                    offset = 0
+                    for chunk in iter(lambda: source.read(job['chunk_bytes']), b''):
+                        api(path, 'PUT', chunk, {**token, 'X-Upload-Offset': str(offset)})
+                        offset += len(chunk)
+                api(path+'/complete', 'POST', headers=token)
+                for _ in range(3000):
+                    state = api(path, headers=token)
+                    if state['status'] not in {'queued', 'processing'}:
+                        break
+                    time.sleep(.1)
+                assert state['status'] == 'complete', state
+                assert state['result']['bytes'] == size and state['result']['rows'] == 1048576
+                final = api(path+'/rows?offset=1048576', headers=token)
+                assert final['total'] == 1048577 and final['rows'][0]['row_number'] == 1048577
+                assert final['rows'][0]['values'] == ['x'*500]
+                api(path, 'DELETE', headers=token)
     finally:
         assert local.stop(), 'Packaged service did not stop cleanly'
     return 0

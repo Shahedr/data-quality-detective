@@ -59,7 +59,8 @@ def main():
         extracted = Path(temporary) / folder.name / executable.relative_to(folder)
         if system == 'Darwin':
             subprocess.run(['codesign', '--verify', '--deep', '--strict', str(Path(temporary) / folder.name)], check=True)
-        subprocess.run([str(extracted), '--self-test'], check=True, timeout=120)
+        subprocess.run([str(extracted), '--self-test', '--large-file-test'], check=True, timeout=600)
+        print('Extracted package passed Excel worksheet/cleaned-download checks and actual 1 GiB CSV browsing.', flush=True)
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     archive.with_suffix('.zip.sha256').write_text(f'{checksum}  {archive.name}\n', encoding='utf-8')
     print(f'Built and smoke-tested: {archive.name}')
