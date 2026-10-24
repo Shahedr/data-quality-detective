@@ -28,8 +28,58 @@ jobs:
           name: desktop-${{ matrix.os }}
           path: desktop-dist/*
           retention-days: 14
-  publish:
+  mac-compatibility:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            source: macos-15
+          - os: macos-26-intel
+            source: macos-15-intel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-${{ matrix.source }}
+          path: compatibility-input
+      - name: Verify the same Mac download on macOS 26
+        run: |
+          python - <<'PY'
+          import hashlib, json, platform, subprocess, tempfile
+          from pathlib import Path
+          from build_desktop import check_mac_install
+          archive = next(Path('compatibility-input').glob('*.zip')).resolve()
+          original = json.loads(next(Path('compatibility-input').glob('*.verification.json')).read_text())
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          assert digest == original['archive_sha256']
+          with tempfile.TemporaryDirectory() as temporary:
+              subprocess.run(['ditto', '-x', '-k', str(archive), temporary], check=True)
+              app = Path(temporary) / 'DataQualityDetective.app'
+              subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+              subprocess.run([str(app / 'Contents/MacOS/DataQualityDetective'), '--self-test', '--large-file-test'], check=True, timeout=600)
+              report = {'platform': platform.platform(), 'architecture': platform.machine(),
+                        'archive_sha256': digest, 'same_macos15_download': True,
+                        'extracted_full_gib_csv': True, 'excel_sheets_cleaning_formulas': True,
+                        'mac_install': check_mac_install(app, temporary)}
+          output = Path('desktop-dist')
+          output.mkdir(exist_ok=True)
+          (output / (archive.stem+'-macos26.verification.json')).write_text(json.dumps(report, indent=2)+'\n')
+          print('Same Mac download passed full 1 GiB, Excel and app-launch checks on '+platform.platform())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-compatibility-${{ matrix.os }}
+          path: desktop-dist/*
+          retention-days: 14
+  publish:
+    needs: [build, mac-compatibility]
     runs-on: ubuntu-latest
     permissions:
       contents: write
