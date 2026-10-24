@@ -127,7 +127,7 @@ async function initializeMode(){
         ?"CSV, XLSX or XLSM · max 4 MB per file · 100,000 data rows · 40 sheets"
         :"CSV, XLSX or XLSM · max 10 MB per file · 100,000 data rows · 40 sheets";
       $("dataNotice").textContent=hosted
-        ?"Free and no sign-in. Uploaded files are sent to Vercel for analysis; no persistent application file storage is used, but transient files and infrastructure logs may exist. Never upload confidential or regulated data. Run locally for private work."
+        ?"Free, with no account required. Online analysis uploads your file for processing. For confidential or sensitive files, use the local app on your own computer. See the privacy notice for storage and retention details."
         :"Free local tool: your files are processed by the server on this computer. No sign-in or payments.";
       return;
     }

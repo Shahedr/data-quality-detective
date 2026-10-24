@@ -14,7 +14,7 @@
   const footer=document.querySelector("footer .shell");
   for(const [path,title] of [["privacy","Privacy"],["cookies","Cookies"],["terms","Usage terms"]]){const a=document.createElement("a");a.href="/"+path;a.textContent=title;footer.append(document.createTextNode(" · "),a);}
   const note=document.createElement("div");note.className="privacy-note";
-  note.textContent="Test version. No optional cookies, analytics or advertising are used by this app. Theme choice lasts for this page only. Read Privacy before uploading files.";
+  note.textContent="No advertising or analytics cookies. Read our privacy notice before uploading a file. Your theme choice lasts until you reload this page.";
   document.querySelector("main").prepend(note);
   // Keep the first review screen short; detailed grids remain available on demand.
   for(const selector of ["#gridPanel",".table-panel"]){const panel=document.querySelector(selector);if(!panel)continue;const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent=selector==="#gridPanel"?"View spreadsheet and highlighted cells":"View column details";details.className="panel";details.style.padding="16px";panel.replaceWith(details);details.append(summary,panel);if(selector==="#gridPanel")details.addEventListener("toggle",()=>{if(details.open)panel.querySelector('.grid-scroll').dispatchEvent(new Event('scroll'));});}

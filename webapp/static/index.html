@@ -220,7 +220,7 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
         <span id="gridVisibleRange" class="muted"></span>
       </div>
       <p class="notice">
-        This is a read-only spreadsheet-style view, not Excel's original formatting. Scroll vertically through every accepted row and horizontally through the columns, with no page buttons. Rows load automatically as you scroll, so very large files are not fully rendered at once. The local prototype re-reads the file for each new block, and cell display is capped at 500 characters. Original files remain unchanged.
+        Read-only view. Scroll to see more rows and columns. Cells show up to 500 characters; the original file is unchanged.
       </p>
     </div>
     <div class="panel table-panel">
@@ -231,42 +231,59 @@ footer{border-top:1px solid #e6eaf2;padding:22px 0 45px;color:#91a0b5;font-size:
 <section id="localSetup" class="panel" style="padding:24px;margin-top:24px">
   <h2>Run locally &mdash; keep your files on your computer</h2>
   <h3>Process up to 1 GB locally</h3>
-  <p><strong>More control over your data privacy.</strong> In local mode, spreadsheet uploads go only to the server running on your own computer. This app does not send those local uploads to Vercel, an AI provider or an analytics service. Temporary processing files and downloaded reports can remain on your device; local processing is not a malware scan or secure-erasure guarantee.</p>
-  <p>For files larger than the 4 MB website limit, run this free app on your Windows PC or Mac. Local large-file mode accepts up to 1 GiB (1,073,741,824 bytes). Files are processed on your computer; no Vercel account, payment or Microsoft Excel installation is needed.</p>
-  <p><a class="secondary" href="http://127.0.0.1:8000/#largeFiles">Open my local app</a> &mdash; start it using the steps below first. If port 8000 is busy, use the address printed in your terminal.</p>
-  <h3>Before you start</h3>
+  <p>Analyze larger files on your Windows PC or Mac without uploading them to this website. The local app is free and does not require an account or Microsoft Excel.</p>
+  <p>Local analysis runs on your computer. Temporary processing files and downloaded reports are stored on your device. <a href="/privacy">Read the privacy notice</a>.</p>
+  <p><a class="secondary" href="http://127.0.0.1:8000/#largeFiles">Open the local app</a> <span class="muted">Already installed? Start the app on your computer, then use this link.</span></p>
+  <h3>1. Prepare your computer</h3>
   <ol>
-    <li>Install <a href="https://www.python.org/downloads/">Python 3.12 or 3.13 from python.org</a>. On Windows, enable the installer option to add Python to PATH if offered. Reopen your terminal after installation.</li>
-    <li><a href="https://github.com/Shahedr/data-quality-detective/archive/refs/heads/main.zip">Download the app ZIP</a>, extract it, and open the extracted folder containing <code>pyproject.toml</code>. Internet is needed for installation; local file processing does not need a hosting service.</li>
-    <li>Keep at least 5 GiB of temporary disk space free for cleaning a 1 GiB file. Only one large job runs at a time. Very complex, encrypted or unsupported files may be rejected below the size limit.</li>
+    <li>Install <a href="https://www.python.org/downloads/">Python 3.12 or 3.13</a>. On Windows, select <strong>Add Python to PATH</strong> if the installer offers it.</li>
+    <li><a href="https://github.com/Shahedr/data-quality-detective/archive/refs/heads/main.zip">Download the app</a> and extract the ZIP file. Open the extracted folder containing <code>pyproject.toml</code>.</li>
+    <li>Have an internet connection for installation and at least 5 GB of free disk space for large-file cleaning.</li>
   </ol>
+  <h3>2. Install and start the app</h3>
+  <p>Choose your operating system. Enter each command on a separate line and wait for it to finish.</p>
   <details><summary><strong>Windows &mdash; PowerShell setup</strong></summary>
-    <p>Open the extracted folder in File Explorer, right-click inside it and choose Open in Terminal. Select PowerShell. Run each line:</p>
+    <ol>
+      <li>In the extracted app folder, right-click an empty area and select <strong>Open in Terminal</strong>. Use a PowerShell tab.</li>
+      <li>Check that Python reports version 3.12 or 3.13, then install the app:</li>
+    </ol>
     <pre style="overflow:auto"><code>python --version
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[web]"
-.\.venv\Scripts\python.exe -m webapp.launch_local</code></pre>
-    <p>If <code>python</code> is not found, try <code>py -3.12</code> for the first two commands after installing Python 3.12. No environment activation or PowerShell execution-policy changes are needed. Next time, run only the last command from this folder, or double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code>.</p>
+.\.venv\Scripts\python.exe -m pip install -e ".[web]"</code></pre>
+    <p>Start the app:</p>
+    <pre style="overflow:auto"><code>.\.venv\Scripts\python.exe -m webapp.launch_local</code></pre>
+    <p>For future use, double-click <code>START_DATA_QUALITY_DETECTIVE.cmd</code> in this folder, or run the start command again. You only need to install once.</p>
   </details>
   <details><summary><strong>Mac &mdash; Terminal setup</strong></summary>
-    <p>Open Terminal, type <code>cd </code> (with a space), drag the extracted app folder into the terminal, and press Return. Run each line:</p>
+    <ol>
+      <li>Open <strong>Terminal</strong>. Type <code>cd </code>, including the space, drag the extracted app folder into the window, and press Return.</li>
+      <li>Check that Python reports version 3.12 or 3.13, then install the app:</li>
+    </ol>
     <pre style="overflow:auto"><code>python3 --version
 python3 -m venv .venv
-./.venv/bin/python -m pip install -e ".[web]"
-./.venv/bin/python -m webapp.launch_local</code></pre>
-    <p>Use Python 3.12 or 3.13 from python.org, not the system Python. If needed, use <code>python3.12</code> instead of <code>python3</code> for the first two commands. Next time, open this same folder in Terminal and run only the last command. The app supports Intel and Apple Silicon Macs through compatible Python packages; native Mac installation has not yet been tested on Mac hardware.</p>
+./.venv/bin/python -m pip install -e ".[web]"</code></pre>
+    <p>Start the app:</p>
+    <pre style="overflow:auto"><code>./.venv/bin/python -m webapp.launch_local</code></pre>
+    <p>For future use, open Terminal in the same app folder and run the start command again. You only need to install once.</p>
   </details>
-  <h3>Check that local mode is working</h3>
+  <h3>3. Open and review your file</h3>
   <ol>
-    <li>The command opens a browser at <code>http://127.0.0.1:8000</code> (or another available port). Check that the badge says <strong>FREE LOCAL WORKSPACE</strong>, rather than FREE WEB TOOL.</li>
-    <li>At the bottom, expand <strong>Large files &middot; up to 1 GiB &middot; on this computer</strong>. Choose a CSV, XLSX or XLSM file and select <strong>Inspect large file</strong>. Start with a small test file to confirm setup.</li>
-    <li>Choose a worksheet for Excel, download the overview, or expand <strong>Prepare a cleaned large-file copy</strong>. Preview changes, confirm and download a separate copy. Your original stays unchanged. Large mode provides inspection and cleaning; the detailed grid, charts and templates use the smaller-file workspace.</li>
-    <li>Keep the terminal open while using the app. Use Cancel to stop or discard a large job. Press <kbd>Ctrl+C</kbd> in the terminal to stop the server when finished.</li>
+    <li>The app opens in your browser. Look for <strong>FREE LOCAL WORKSPACE</strong> at the top. Keep the terminal window open while you work.</li>
+    <li>At the bottom of the page, expand <strong>Large files &middot; up to 1 GiB &middot; on this computer</strong>. Choose your CSV, XLSX or XLSM file, then select <strong>Inspect large file</strong>.</li>
+    <li>Review the overview and choose a worksheet if needed. To clean the file, open <strong>Prepare a cleaned large-file copy</strong>, preview the changes and download a separate copy.</li>
+    <li>When finished, press <kbd>Ctrl+C</kbd> in the terminal to close the app.</li>
   </ol>
-  <details><summary>Troubleshooting and privacy</summary>
-    <p>If the browser does not open, use the address printed in the terminal. If dependencies fail to install, check your connection and Python version; do not use administrator or sudo installation. If the file is rejected, read the message: the 1 GiB limit does not override format, memory-safety or temporary disk limits. Avoid running from a cloud-synced folder for private work. Do not expose the local server through a tunnel or public network address.</p>
-    <p>Formula cells and VBA are preserved, never executed by the upload service. Changed inputs can affect calculated results or macro behavior. Do not enable macros from untrusted files. Downloaded reports remain on your device.</p>
-    <p>Windows setup and loopback checks are tested here. Mac commands follow Python's documented virtual-environment layout; a real Mac check remains outstanding. <a href="https://docs.python.org/3/library/venv.html">Python environment documentation</a> &middot; <a href="https://github.com/Shahedr/data-quality-detective/blob/main/LOCAL_HOSTING.md">Detailed local limits</a></p>
+  <details><summary>Need help?</summary>
+    <p><strong>Python is not found:</strong> reopen your terminal after installing it. On Windows with Python 3.12 installed, try <code>py -3.12</code> instead of <code>python</code> for the version check and environment-creation commands. On Mac, try <code>python3.12</code> instead of <code>python3</code>.</p>
+    <p><strong>The browser does not open:</strong> copy the web address shown in the terminal into your browser. It usually starts with <code>http://127.0.0.1:8000</code>; the number may differ if another app is using it.</p>
+    <p><strong>Installation fails:</strong> check your internet connection and Python version. Run the commands from the extracted app folder using your normal user account.</p>
+    <p><strong>A file is rejected:</strong> read the message shown in the app. File type, workbook structure and available disk space also affect what can be processed. Password-protected files are not supported.</p>
+  </details>
+  <details><summary>File limits and privacy</summary>
+    <p>The local limit is 1 GiB per file. One large file is processed at a time. Large-file mode provides an overview and selected cleaning tools; charts, templates and the detailed grid are available in the smaller-file workspace.</p>
+    <p>Your original file stays unchanged. Cleaning creates a separate copy. Formulas and macros are preserved in supported Excel copies, but changes to input cells can affect their results. Only enable macros from a source you trust.</p>
+    <p>Use a folder outside cloud-sync services when working with private data. Keep the local app accessible only on your own computer. Downloaded reports remain on your device until you delete them.</p>
+    <p><a href="https://github.com/Shahedr/data-quality-detective/blob/main/LOCAL_HOSTING.md">Detailed setup and file limits</a> &middot; <a href="mailto:shahed2338@gmail.com">Contact support</a></p>
   </details>
 </section>
 </main>
