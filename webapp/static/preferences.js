@@ -51,12 +51,14 @@
   const date=cleanSelect('Date input format',[['','Do not change dates'],['%Y-%m-%d','YYYY-MM-DD'],['%m/%d/%Y','MM/DD/YYYY'],['%d/%m/%Y','DD/MM/YYYY']]);
   const duplicates=cleanCheck('Remove duplicate full rows (CSV only)');
   const previewButton=document.createElement('button');previewButton.textContent='Preview full-file cleaning';previewButton.className='secondary';cleaning.append(previewButton);
-  const previewText=document.createElement('pre');previewText.style.whiteSpace='pre-wrap';cleaning.append(previewText);
-  const cleanedSheetPreview=document.createElement('section');cleaning.append(cleanedSheetPreview);
+  const previewTotals=document.createElement('p');cleaning.append(previewTotals);
+  const changeDetails=document.createElement('details'),changeTitle=document.createElement('summary');changeTitle.textContent='View the first 100 cell changes';changeDetails.append(changeTitle);
+  const previewText=document.createElement('pre');previewText.style.whiteSpace='pre-wrap';changeDetails.append(previewText);cleaning.append(changeDetails);
+  const cleanedSheetPreview=document.createElement('section');cleaning.insertBefore(cleanedSheetPreview,changeDetails);
   const confirm=cleanCheck('I reviewed this preview and accept the separate cleaned copy');
   const exportButton=document.createElement('button');exportButton.textContent='Download approved cleaned copy';exportButton.className='secondary';exportButton.disabled=true;cleaning.append(exportButton);
   confirm.addEventListener('change',()=>{exportButton.disabled=!confirm.checked||!reviewJob||!overview?.cleaning;});
-  function invalidateClean(){cleanedSheetPreview.replaceChildren();if(overview)delete overview.cleaning;confirm.checked=false;exportButton.disabled=true;previewText.textContent='Options changed. Prepare a fresh preview before downloading.';}
+  function invalidateClean(){previewTotals.textContent='';cleanedSheetPreview.replaceChildren();if(overview)delete overview.cleaning;confirm.checked=false;exportButton.disabled=true;previewText.textContent='Options changed. Prepare a fresh preview before downloading.';}
   for(const control of [fields,excelColumns,trim,casing,date,duplicates,sheets])control.addEventListener('change',invalidateClean);
   previewButton.addEventListener('click',()=>{const excel=overview?.kind==='Excel';const columns=excel?excelColumns.value.split(',').map(value=>value.trim().toUpperCase()).filter(Boolean):[...fields.querySelectorAll('input:checked')].map(input=>input.value);inspectLarge(selectedFile,{sheet:excel?sheets.value:'',columns,trim:trim.checked,case:casing.value,date_format:date.value,remove_duplicates:duplicates.checked});});
   exportButton.addEventListener('click',()=>{
@@ -130,7 +132,7 @@
     if(file.size>1024**3){status.textContent='This file exceeds the local limit of 1,073,741,824 bytes (about 1 GB).';return;}
     if(!/\.(csv|xlsx|xlsm)$/i.test(file.name)){status.textContent='Choose a CSV, XLSX or XLSM file.';return;}
     large.open=true;large.scrollIntoView({behavior:'smooth',block:'start'});
-    selectedFile=file;selectedName.textContent='Selected file: '+file.name;gridGeneration++;gridControls.hidden=true;
+    previewTotals.textContent='';selectedFile=file;selectedName.textContent='Selected file: '+file.name;gridGeneration++;gridControls.hidden=true;
     start.disabled=input.disabled=previewButton.disabled=true;cancel.disabled=false;save.disabled=true;cancelled=false;overview=null;result.textContent='';sheetPreview.replaceChildren();cleanedSheetPreview.replaceChildren();sheetLabel.hidden=true;confirm.checked=false;exportButton.disabled=true;let job;
     for(const control of cleaning.querySelectorAll('input,select,button'))control.disabled=true;
     try{
@@ -162,13 +164,14 @@
       const excel=overview.kind==='Excel';excelColumns.hidden=!excel;fields.hidden=excel;duplicates.disabled=excel;if(excel)duplicates.checked=false;
       cleanHelp.textContent=excel?'Enter column letters separated by commas, such as A, C. Row 1 is treated as headings. Formula cells are skipped. Only reviewed literal text changes; original workbook parts and VBA are preserved. Excel row removal is blocked.':'Choose columns for text/date changes. Duplicate detection compares complete rows after changes using temporary disk storage. Download is CSV; spreadsheet programs can interpret formula-like CSV text.';
       if(!clean){fields.replaceChildren(legend);for(const name of Object.keys(overview.missing||{})){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=name;label.append(box,document.createTextNode(' '+name+' '));fields.append(label);}previewText.textContent='';}
-      if(overview.cleaning){reviewJob=job;const p=overview.cleaning;renderSheet(cleanedSheetPreview,p.copy_preview,'Cleaned copy preview');previewText.textContent=p.cells_changed+' changed cells · '+p.duplicates_removed+' duplicate rows removed\n'+p.invalid_dates_unchanged+' invalid dates left unchanged\n\n'+p.changes.map(change=>'Row '+change.row+' / '+change.column+': '+JSON.stringify(change.before)+' → '+JSON.stringify(change.after)).join('\n')+'\n\nFirst 100 changes shown; counts cover the entire file.\n'+p.notice;cleaning.open=true;status.textContent='Review the cleaning preview. The temporary output waits for your confirmation; original source is unchanged.';}
+      if(overview.cleaning){reviewJob=job;const p=overview.cleaning;previewTotals.textContent=p.cells_changed.toLocaleString()+' changed cells · '+p.duplicates_removed.toLocaleString()+' duplicate rows removed';renderSheet(cleanedSheetPreview,p.copy_preview,'Cleaned copy preview');previewText.textContent=p.cells_changed+' changed cells · '+p.duplicates_removed+' duplicate rows removed\n'+p.invalid_dates_unchanged+' invalid dates left unchanged\n\n'+p.changes.map(change=>'Row '+change.row+' / '+change.column+': '+JSON.stringify(change.before)+' → '+JSON.stringify(change.after)).join('\n')+'\n\nFirst 100 changes shown; counts cover the entire file.\n'+p.notice;cleaning.open=true;status.textContent='Review the cleaning preview. The temporary output waits for your confirmation; original source is unchanged.';}
       else{browseJob=job;status.textContent='Spreadsheet ready to browse. Original unchanged. Temporary browsing data stays on this computer until you delete it, quit the app, or leave it unused for an hour.';}
       gridOffset=gridColumn=0;gridControls.hidden=false;await loadGrid();
     }catch(error){status.textContent=cancelled?'Cancelled. Temporary data is being cleared.':error.message;if(job)try{await api('/api/large/uploads/'+job.id,{method:'DELETE',headers:{'X-Upload-Token':job.token}});}catch(_){} }
     finally{start.disabled=input.disabled=previewButton.disabled=false;for(const control of cleaning.querySelectorAll('input,select,button'))control.disabled=false;duplicates.disabled=overview?.kind==='Excel';exportButton.disabled=!confirm.checked||!reviewJob||!overview?.cleaning;cancel.disabled=!(reviewJob||browseJob);activeJob=null;}
   }
-  start.addEventListener('click',()=>inspectLarge(input.files[0]||selectedFile));
+  input.addEventListener('change',()=>{selectedFile=input.files[0];selectedName.textContent=selectedFile?'Selected file: '+selectedFile.name:'';gridGeneration++;gridControls.hidden=true;sheetPreview.replaceChildren();cleanedSheetPreview.replaceChildren();cleaning.hidden=true;save.disabled=true;status.textContent='Select Inspect large file to open this spreadsheet.';});
+  start.addEventListener('click',()=>inspectLarge(selectedFile||input.files[0]));
   window.DQDLargeFiles={inspect:inspectLarge};
   fetch('/api/config').then(response=>response.json()).then(config=>{if(!config.large_upload_bytes)large.hidden=true;}).catch(()=>{large.hidden=true;});
 })();
