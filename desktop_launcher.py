@@ -86,6 +86,47 @@ def self_test():
         grid = api(path+'/rows', headers=token)
         assert grid['total'] == 3 and grid['rows'][2]['values'] == ['2', '20']
         api(path, 'DELETE', headers=token)
+        # Exercise the same Excel/cleaning routes inside each platform's frozen runtime.
+        from io import BytesIO
+        from openpyxl import Workbook, load_workbook
+        from urllib.parse import urlencode
+        book = Workbook()
+        book.active.title = 'Orders'
+        book.active.append(['Customer', 'Formula'])
+        for _ in range(65):
+            book.active.append([' Alice ', '=2+3'])
+        book.create_sheet('Inventory').append(['Widget', 42])
+        book.create_sheet('Hidden').append(['Private reference'])
+        book['Hidden'].sheet_state = 'hidden'
+        source = BytesIO()
+        book.save(source)
+        book.close()
+        job = api('/api/large/uploads', 'POST', json.dumps({
+            'name': 'workbook.xlsx', 'size': len(source.getvalue()),
+            'clean': {'sheet': 'Orders', 'columns': ['A'], 'trim': True},
+        }).encode(), {'Content-Type': 'application/json'})
+        path, token = '/api/large/uploads/'+job['id'], {'X-Upload-Token': job['token']}
+        api(path, 'PUT', source.getvalue(), {**token, 'X-Upload-Offset': '0'})
+        api(path+'/complete', 'POST', headers=token)
+        for _ in range(100):
+            state = api(path, headers=token)
+            if state['status'] not in {'queued', 'processing'}:
+                break
+            time.sleep(.1)
+        assert state['status'] == 'review', state
+        original = api(path+'/rows?sheet=Orders&offset=50', headers=token)
+        cleaned = api(path+'/rows?sheet=Orders&offset=50&cleaned=true', headers=token)
+        assert original['rows'][0]['values'] == [' Alice ', '=2+3']
+        assert cleaned['rows'][0]['values'] == ['Alice', '=2+3']
+        assert api(path+'/rows?sheet=Inventory', headers=token)['rows'][0]['values'] == ['Widget', '42']
+        assert api(path+'/rows?sheet=Hidden', headers=token)['rows'][0]['values'] == ['Private reference']
+        data = urlencode({'token': job['token'], 'fingerprint': state['result']['cleaning']['fingerprint'], 'confirmed': 'true'}).encode()
+        with urlopen(Request(local.url+path+'/download', data=data, headers={'Content-Type': 'application/x-www-form-urlencoded'}), timeout=30) as response:
+            downloaded = load_workbook(BytesIO(response.read()), data_only=False)
+        assert downloaded['Orders']['A2'].value == 'Alice' and downloaded['Orders']['B2'].value == '=2+3'
+        assert downloaded['Hidden'].sheet_state == 'hidden'
+        downloaded.close()
+        api(path, 'DELETE', headers=token)
     finally:
         assert local.stop(), 'Packaged service did not stop cleanly'
     return 0
