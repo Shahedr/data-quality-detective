@@ -10,6 +10,14 @@ Open the website, choose **Try example data**, or upload a spreadsheet (up to 4 
 
 It detects missing values, duplicate records, invalid dates, mixed numeric/text values, numerical outliers, and selected Excel dropdown issues. It inspects workbook structure and reports formula and macro information **without executing macros or recalculating formulas**. The downloaded review Excel workbook contains **literal values**, not executable original formula or macro content.
 
+## Cleaned Excel copies and text formatting
+
+For XLSX/XLSM uploads, **Prepare a cleaned copy** retains the workbook's existing cell styles and rich text (different fonts, colors, bold, italics, underline and other font properties within one cell). Trimming surrounding whitespace and changing case keep the remaining characters in their original text runs. This works for both inline and shared Excel strings in the website and local large-file cleaner. Other workbook parts, including VBA, remain unchanged; source files are never overwritten.
+
+The browser preview shows values, not the original Excel formatting. Open the downloaded cleaned copy in Excel to review its appearance. The separate annotated Excel audit is a report, not a formatting-preserving cleaned copy. CSV files cannot store rich text.
+
+If converting a rich-text date would require moving characters between differently styled runs, cleaning stops with an explanation instead of flattening the formatting. Disable date conversion for that column. Unsupported text annotations also stop the edit safely.
+
 ## Run privately on your own computer
 
 ```bash

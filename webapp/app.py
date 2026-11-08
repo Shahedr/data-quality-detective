@@ -205,7 +205,7 @@ async def clean_preview(file: UploadFile = File(...), options: str = Form("{}"))
     if filename.lower().endswith((".xlsx", ".xlsm")):
         output, preview = preserve_workbook(filename, data, parsed)
         output.close()
-        preview["notice"] = "Only selected literal cells change in a separate workbook copy. Formulas and all other workbook package parts, including VBA, are preserved. Row removal and edits to formula cells are blocked. Changed inputs can still change calculated results or macro behavior: review in Excel before relying on this copy. Original file remains unchanged."
+        preview["notice"] = "Only selected literal cells change in a separate workbook copy. Mixed font styles within cells are kept when trimming spaces or changing case. Formulas and all other workbook package parts, including VBA, are preserved. Row removal and edits to formula cells are blocked. Changed inputs can still change calculated results or macro behavior: review in Excel before relying on this copy. Original file remains unchanged."
     else:
         _, preview = clean_frames(filename, data, parsed)
     return preview
