@@ -2,6 +2,7 @@
 import csv
 import hashlib
 import json
+import io
 import re
 import shutil
 import sqlite3
@@ -10,12 +11,14 @@ from contextlib import closing
 from datetime import datetime
 from html import escape
 from zipfile import ZipFile
+from xml.sax.saxutils import XMLGenerator
 
 from defusedxml import ElementTree as ET
 from defusedxml.sax import make_parser
 
 from webapp.largeworkbook import CheckedReader, ContentHandler, SheetOverview, NS
 from webapp.workspace import validate_excel_value
+from webapp.richtext import preserve_runs, string_value
 
 
 def changed(value, options, stats):
@@ -96,19 +99,35 @@ class SharedStrings(ContentHandler):
         self.db, self.index = db, 0
         self.parts, self.length, self.rich, self.in_text = [], 0, False, False
         self.depth = 0
+        self.xml = self.writer = None
+        self.namespaces = {}
+
+    def write(self, value):
+        if self.xml.tell()+len(value) > 2*1024**2:
+            raise ValueError('Shared string markup exceeds safe cleaning size')
+        self.xml.write(value)
 
     def startElement(self, name, attrs):
         self.depth += 1
         if self.depth > 64:
             raise ValueError('Shared-string XML nesting exceeds safety limit')
         tag = name.split(':')[-1]
+        if tag == 'sst':
+            self.namespaces = {k: v for k, v in attrs.items() if k == 'xmlns' or k.startswith('xmlns:')}
         if tag == 'si':
             self.parts, self.length, self.rich = [], 0, False
+            self.xml = io.BytesIO()
+            self.writer = XMLGenerator(self, encoding='utf-8')
+            attrs = {**self.namespaces, **dict(attrs)}
         elif tag not in {'sst', 't'}:
             self.rich = True
+        if self.writer:
+            self.writer.startElement(name, attrs)
         self.in_text = tag == 't'
 
     def characters(self, value):
+        if self.writer:
+            self.writer.characters(value)
         if self.in_text:
             self.length += len(value)
             if self.length > 32767:
@@ -116,10 +135,13 @@ class SharedStrings(ContentHandler):
             self.parts.append(value)
 
     def endElement(self, name):
+        if self.writer:
+            self.writer.endElement(name)
         self.depth -= 1
         self.in_text = False
         if name.split(':')[-1] == 'si':
-            self.db.execute('INSERT INTO strings VALUES (?,?,?)', (self.index, ''.join(self.parts), int(self.rich)))
+            self.db.execute('INSERT INTO strings VALUES (?,?,?,?)', (self.index, ''.join(self.parts), int(self.rich), self.xml.getvalue().decode('utf-8') if self.rich else None))
+            self.xml = self.writer = None
             self.index += 1
             if self.index % 10000 == 0:
                 self.db.commit()
@@ -194,7 +216,7 @@ def clean_excel(source, output, options, check, row_sink=None):
             link = relation.attrib['Target']
             part = posixpath.normpath(link.lstrip('/') if link.startswith('/') else 'xl/'+link)
             db.execute('PRAGMA cache_size=-4096')
-            db.execute('CREATE TABLE strings (id INTEGER PRIMARY KEY, value TEXT, rich INTEGER)')
+            db.execute('CREATE TABLE strings (id INTEGER PRIMARY KEY, value TEXT, rich INTEGER, markup TEXT)')
             if 'xl/sharedStrings.xml' in names:
                 parser = make_parser()
                 parser.setContentHandler(SharedStrings(db))
@@ -214,16 +236,17 @@ def clean_excel(source, output, options, check, row_sink=None):
                     return raw
                 kind, rich = cell.attrib.get('t'), False
                 if kind == 's':
-                    found = db.execute('SELECT value,rich FROM strings WHERE id=?', (int(cell.find('m:v', NS).text),)).fetchone()
+                    found = db.execute('SELECT value,rich,markup FROM strings WHERE id=?', (int(cell.find('m:v', NS).text),)).fetchone()
                     if found is None:
                         raise ValueError('Missing shared string')
-                    value, rich = found
+                    value, rich, markup = found
+                    text = ET.fromstring(markup) if rich else None
                 elif kind == 'inlineStr':
                     text = cell.find('m:is', NS)
                     if text is None:
                         return raw
                     rich = any(child.tag != '{'+NS['m']+'}t' for child in text)
-                    value = ''.join(child.text or '' for child in text if child.tag == '{'+NS['m']+'}t')
+                    value = string_value(text)
                 elif kind == 'str':
                     value = cell.find('m:v', NS).text or ''
                 else:
@@ -231,12 +254,13 @@ def clean_excel(source, output, options, check, row_sink=None):
                 new = changed(value, options, stats)
                 if new == value:
                     return raw
-                if rich or any(child.tag not in {'{'+NS['m']+'}v', '{'+NS['m']+'}is'} for child in cell):
+                if any(child.tag not in {'{'+NS['m']+'}v', '{'+NS['m']+'}is'} for child in cell):
                     raise ValueError('Selected rich text or cell features cannot be changed safely.')
                 validate_excel_value(new)
                 opening = re.match(rb'<(?:[^\x22\x27<>]|\x22[^\x22]*\x22|\x27[^\x27]*\x27)*>', raw)[0][:-1].decode()
                 opening = re.sub(r'\s+t\s*=\s*([\x22\x27]).*?\1', '', opening).rstrip('/')
-                result = (opening+' t="inlineStr"><'+prefix+'is><'+prefix+'t xml:space="preserve">'+escape(new, quote=False)+'</'+prefix+'t></'+prefix+'is></'+prefix+'c>').encode()
+                content = preserve_runs(text, new, options) if rich else '<'+prefix+'is><'+prefix+'t xml:space="preserve">'+escape(new, quote=False)+'</'+prefix+'t></'+prefix+'is>'
+                result = (opening+' t="inlineStr">'+content+'</'+prefix+'c>').encode()
                 record_change(stats, int(match[2]), match[1], value, new)
                 return result
             with ZipFile(output, 'w') as dst:
@@ -274,5 +298,5 @@ def clean_excel(source, output, options, check, row_sink=None):
     finally:
         database.unlink(missing_ok=True)
     stats['sheet'] = options.sheet
-    stats['notice'] = 'Separate preservation-aware workbook copy. Only selected literal text cells below row 1 change. Formula cells are skipped; other package parts, including VBA, are verified unchanged. Data changes can change formula results or macro behavior. Review in Excel.'
+    stats['notice'] = 'Separate preservation-aware workbook copy. Only selected literal text cells below row 1 change. Mixed font styles within cells are retained for trim/case changes. Formula cells are skipped; other package parts, including VBA, are verified unchanged. Data changes can change formula results or macro behavior. Review in Excel.'
     return stats

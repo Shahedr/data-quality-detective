@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from openpyxl.utils import get_column_letter
 
 from webapp.workspace import CleanOptions, clean_frames, validate_excel_value
+from webapp.richtext import preserve_runs
 
 
 def preserve_workbook(name, data, options):
@@ -46,9 +47,11 @@ def preserve_workbook(name, data, options):
         if not path.startswith("xl/worksheets/") or relation.attrib.get("TargetMode") == "External":
             raise HTTPException(422, "Unsupported worksheet relationship; original remains unchanged.")
         xml = src.read(path).decode("utf-8")
+        shared = None
         pending = set(changes)
         pattern = re.compile(r'<(?P<tag>(?:[A-Za-z_][\w.-]*:)?c)\b(?P<attrs>[^>]*?)(?:\s*/>|>(?P<body>.*?)</(?P=tag)\s*>)', re.S)
         def replace(match):
+            nonlocal shared
             attrs = match["attrs"]
             ref = re.search(r'\br\s*=\s*([\x22\x27])(.*?)\1', attrs)
             coordinate = ref[2] if ref else None
@@ -57,15 +60,32 @@ def preserve_workbook(name, data, options):
             body = match["body"] or ""
             if re.search(r'<(?:[\w.-]+:)?f\b', body):
                 raise HTTPException(422, f"{coordinate} contains a formula. Formula cells cannot be cleaned.")
-            if any(tag.split(":")[-1] not in {"v", "is", "t"}
-                   for tag in re.findall(r'<([\w:.-]+)\b', body)):
-                raise HTTPException(422, f"{coordinate} contains rich text or unsupported cell features. It cannot be changed safely.")
+            prefix = match["tag"][:-1]
+            declaration = f' xmlns:{prefix[:-1]}="{ns["m"]}"' if prefix else ''
+            cell = ET.fromstring(f'<root xmlns="{ns["m"]}"{declaration}>'+match[0]+'</root>')[0]
+            text = cell.find('m:is', ns)
+            if cell.attrib.get('t') == 's':
+                if shared is None:
+                    shared = ET.fromstring(src.read('xl/sharedStrings.xml'))
+                text = shared[int(cell.find('m:v', ns).text)]
+            rich = text is not None and any(n.tag != '{'+ns['m']+'}t' for n in text)
+            if not rich and any(tag.split(':')[-1] not in {'v', 'is', 't'}
+                                for tag in re.findall(r'<([\w:.-]+)\b', body)):
+                raise HTTPException(422, f'{coordinate} contains unsupported cell features. It cannot be changed safely.')
+            if any(n.tag not in {'{'+ns['m']+'}v', '{'+ns['m']+'}is'} for n in cell):
+                raise HTTPException(422, f"{coordinate} contains unsupported cell features. It cannot be changed safely.")
             # Preserve style and metadata attributes, replacing only the value representation.
             attrs = re.sub(r'\s+t\s*=\s*([\x22\x27]).*?\1', '', attrs)
-            prefix = match["tag"][:-1]
             value = escape(changes[coordinate], quote=False)
+            if rich:
+                try:
+                    content = preserve_runs(text, changes[coordinate], options)
+                except ValueError as exc:
+                    raise HTTPException(422, f'{coordinate}: {exc}') from exc
+            else:
+                content = f'<{prefix}is><{prefix}t xml:space="preserve">{value}</{prefix}t></{prefix}is>'
             pending.discard(coordinate)
-            return f'<{match["tag"]}{attrs} t="inlineStr"><{prefix}is><{prefix}t xml:space="preserve">{value}</{prefix}t></{prefix}is></{match["tag"]}>'
+            return f'<{match["tag"]}{attrs} t="inlineStr">{content}</{match["tag"]}>'
         patched = pattern.sub(replace, xml).encode("utf-8")
         if pending:
             raise HTTPException(422, "Some cells could not be preserved safely. No changed workbook was generated.")
